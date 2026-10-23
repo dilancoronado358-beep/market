@@ -33,6 +33,9 @@ interface StoreContextType extends DatabaseSnapshot {
   retryEmail: (id: string) => any;
   markNotificationAsRead: (id: string) => any;
   updateSettings: (newSettings: any) => any;
+  createCustomer: (data: any) => any;
+  createSupplier: (data: any) => any;
+  createPurchaseOrder: (data: any) => any;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -239,6 +242,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateSettings: (newSettings) => {
           db.updateSettings(newSettings, currentUserId, currentUserName);
           toast.success('Configuración general actualizada.');
+        },
+        createCustomer: (data) => {
+          return db.createCustomer(data);
+        },
+        createSupplier: (data) => {
+          return db.createSupplier(data);
+        },
+        createPurchaseOrder: (data) => {
+          return db.createPurchaseOrder(data);
         },
       }}
     >

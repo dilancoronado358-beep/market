@@ -49,9 +49,8 @@ export const SuppliersList: React.FC = () => {
       return;
     }
 
-    // Agregar a la base de datos
-    const newSup: Supplier = {
-      id: `sup-${Date.now()}`,
+    // Agregar a la base de datos de Supabase
+    const newSup = db.createSupplier({
       ruc,
       business_name: businessName,
       trade_name: tradeName || businessName,
@@ -62,10 +61,8 @@ export const SuppliersList: React.FC = () => {
       payment_terms_days: paymentTerms,
       lead_time_days: 2,
       is_active: true,
-      created_at: new Date().toISOString(),
-    };
+    });
 
-    db.getSnapshot().suppliers.push(newSup);
     toast.success(`Proveedor "${newSup.trade_name}" registrado.`);
     setIsNewSupplierModalOpen(false);
     // Reset

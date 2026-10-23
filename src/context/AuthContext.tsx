@@ -1,5 +1,6 @@
 // ==============================================================================
 // CONTEXTO DE AUTENTICACIÓN Y CONTROL DE ACCESO BASADO EN ROLES (RBAC)
+// Autenticación directa en Supabase PostgreSQL — SIN LOCALSTORAGE
 // ==============================================================================
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -23,61 +24,86 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_USER_STORAGE_KEY = 'erp_pos_ecuador_auth_user';
+const SESSION_KEY = 'erp_pos_ecuador_session';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
 
-  // Cargar usuarios y sesión persistida
+  // Limpiar cualquier residuo de localStorage y verificar sesión en Supabase / memoria
   useEffect(() => {
     const checkSession = async () => {
       try {
-        localStorage.removeItem('tienda_katy_auth_user');
-      } catch {}
-      setIsLoading(true);
-      const snapshot = db.getSnapshot();
-      setAllUsers(snapshot.profiles);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('erp_pos_ecuador_db_v1');
+          localStorage.removeItem('erp_pos_ecuador_auth_user');
+          localStorage.removeItem('tienda_katy_db_v1');
+          localStorage.removeItem('tienda_katy_auth_user');
+        }
+      } catch {
+        // Ignorar
+      }
 
+      setIsLoading(true);
+
+      // 1. Cargar perfiles directamente de Supabase
+      let profilesList: UserProfile[] = db.getSnapshot().profiles;
       if (isSupabaseConfigured && supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          let profile = snapshot.profiles.find((p) => p.email.toLowerCase() === session.user.email?.toLowerCase());
-          if (!profile) {
-            const { data: dbProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('email', session.user.email?.toLowerCase())
-              .maybeSingle();
-            if (dbProfile) {
-              profile = dbProfile;
-              snapshot.profiles.push(dbProfile);
-              db.persistState();
+        try {
+          const { data: dbProfiles, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+          if (!error && dbProfiles && dbProfiles.length > 0) {
+            profilesList = dbProfiles;
+            db.getSnapshot().profiles = dbProfiles;
+          }
+        } catch (e) {
+          console.warn('Error fetching profiles from Supabase:', e);
+        }
+      }
+      setAllUsers(profilesList);
+
+      // 2. Verificar sesión de Supabase Auth
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.email) {
+            const userEmail = session.user.email.toLowerCase();
+            const foundProfile = profilesList.find((p) => p.email.toLowerCase() === userEmail);
+            if (foundProfile && foundProfile.is_active) {
+              setUser(foundProfile);
+              setIsLoading(false);
+              return;
             }
           }
-          if (profile && profile.is_active) {
-            setUser(profile);
-            setIsLoading(false);
-            return;
-          }
+        } catch (e) {
+          console.warn('Error checking Supabase auth session:', e);
         }
       }
 
-      // Si no hay Supabase o no hay sesión en Supabase, verificar sesión local guardada
-      const savedUserStr = localStorage.getItem(AUTH_USER_STORAGE_KEY);
-      if (savedUserStr) {
-        try {
-          const savedUser = JSON.parse(savedUserStr);
-          const currentProfile = snapshot.profiles.find((p) => p.id === savedUser.id);
-          if (currentProfile && currentProfile.is_active) {
-            setUser(currentProfile);
-          } else {
-            localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      // 3. Verificar sesión temporal en sessionStorage (cerrable al cerrar pestaña, 0 localStorage)
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          const savedSession = sessionStorage.getItem(SESSION_KEY);
+          if (savedSession) {
+            const parsed = JSON.parse(savedSession);
+            const activeProfile = profilesList.find(
+              (p) => p.email.toLowerCase() === (parsed.email || '').toLowerCase()
+            );
+            if (activeProfile && activeProfile.is_active) {
+              setUser(activeProfile);
+              setIsLoading(false);
+              return;
+            } else {
+              sessionStorage.removeItem(SESSION_KEY);
+            }
           }
-        } catch {
-          localStorage.removeItem(AUTH_USER_STORAGE_KEY);
         }
+      } catch {
+        // Ignorar
       }
 
       setIsLoading(false);
@@ -85,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     checkSession();
 
-    // Suscribirse a cambios en la base de datos
+    // Suscripción al motor relacional
     const unsubscribe = db.subscribe(() => {
       setAllUsers([...db.getSnapshot().profiles]);
     });
@@ -93,105 +119,113 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
+  // Inicio de sesión directo contra Supabase
   const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     const cleanEmail = email.trim().toLowerCase();
 
-    if (isSupabaseConfigured && supabase && password) {
+    let targetProfile: UserProfile | null = null;
+
+    // 1. Consultar directamente la tabla public.profiles de Supabase
+    if (isSupabaseConfigured && supabase) {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-        if (!error && data?.user) {
-          let profile = db.getSnapshot().profiles.find((p) => p.email.toLowerCase() === cleanEmail);
-          
-          if (!profile) {
-            // 1. Buscar en la tabla public.profiles de Supabase
-            const { data: dbProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('email', cleanEmail)
-              .maybeSingle();
+        const { data: dbProfile, error: profErr } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('email', cleanEmail)
+          .maybeSingle();
 
-            if (dbProfile) {
-              profile = {
-                id: dbProfile.id,
-                email: dbProfile.email,
-                full_name: dbProfile.full_name || cleanEmail.split('@')[0],
-                role: dbProfile.role || 'cajero',
-                is_active: dbProfile.is_active ?? true,
-                phone: dbProfile.phone || '',
-                created_at: dbProfile.created_at || new Date().toISOString(),
-              };
-              db.getSnapshot().profiles.push(profile);
-              db.persistState();
-            } else {
-              // 2. Usuario creado directamente en Supabase Auth Dashboard sin fila previa en profiles
-              const autoRole: UserRole = (data.user.user_metadata?.role as UserRole) || 'administrador';
-              const autoName = data.user.user_metadata?.full_name || cleanEmail.split('@')[0] || 'Usuario Supabase';
-              const autoProfile: UserProfile = {
-                id: data.user.id,
-                email: cleanEmail,
-                full_name: autoName,
-                role: autoRole,
-                is_active: true,
-                phone: data.user.user_metadata?.phone || '',
-                created_at: new Date().toISOString(),
-              };
+        if (profErr) {
+          console.warn('Supabase profile query notice:', profErr.message);
+        }
 
-              try {
-                await supabase.from('profiles').upsert({
-                  id: autoProfile.id,
-                  email: autoProfile.email,
-                  full_name: autoProfile.full_name,
-                  role: autoProfile.role,
-                  is_active: true,
-                  phone: autoProfile.phone,
-                  updated_at: new Date().toISOString(),
-                });
-              } catch (e) {
-                console.warn('Auto profile upsert warning:', e);
-              }
-
-              profile = autoProfile;
-              db.getSnapshot().profiles.push(autoProfile);
-              db.persistState();
-            }
+        if (dbProfile) {
+          targetProfile = dbProfile;
+          // Actualizar snapshot en memoria
+          const existingIdx = db.getSnapshot().profiles.findIndex((p) => p.email.toLowerCase() === cleanEmail);
+          if (existingIdx >= 0) {
+            db.getSnapshot().profiles[existingIdx] = dbProfile;
+          } else {
+            db.getSnapshot().profiles.push(dbProfile);
           }
+        }
 
-          if (profile) {
-            if (!profile.is_active) {
-              await supabase.auth.signOut();
-              setIsLoading(false);
-              return { success: false, error: 'Esta cuenta ha sido desactivada por el administrador.' };
-            }
-            setUser(profile);
-            localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(profile));
-            db.addAuditLog(profile.id, profile.full_name, 'LOGIN_EXITOSO_SUPABASE', 'Autenticación', profile.id, 'Inicio de sesión con Supabase Auth');
-            setIsLoading(false);
-            return { success: true };
+        // Intentar autenticación formal en Supabase Auth
+        if (password) {
+          const { data: authData } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
+          if (authData?.user && !targetProfile) {
+            // Si el usuario existe en Supabase Auth pero no en profiles, crearlo
+            const autoRole: UserRole = (authData.user.user_metadata?.role as UserRole) || 'administrador';
+            const autoName = authData.user.user_metadata?.full_name || cleanEmail.split('@')[0] || 'Usuario';
+            targetProfile = {
+              id: authData.user.id,
+              email: cleanEmail,
+              full_name: autoName,
+              role: autoRole,
+              is_active: true,
+              phone: authData.user.user_metadata?.phone || '',
+              created_at: new Date().toISOString(),
+            };
+
+            await supabase.from('profiles').upsert({
+              id: targetProfile.id,
+              email: targetProfile.email,
+              full_name: targetProfile.full_name,
+              role: targetProfile.role,
+              is_active: true,
+              phone: targetProfile.phone,
+              updated_at: new Date().toISOString(),
+            });
+            db.getSnapshot().profiles.push(targetProfile);
           }
         }
       } catch (err) {
-        console.warn('Supabase auth attempt:', err);
+        console.warn('Supabase login notice:', err);
       }
     }
 
-    // Modo autenticación con perfiles del sistema
-    const profile = db.getSnapshot().profiles.find((p) => p.email.toLowerCase() === email.toLowerCase());
-    if (!profile) {
-      setIsLoading(false);
-      return { success: false, error: 'Usuario no encontrado en el sistema.' };
+    // 2. Si no se encontró en Supabase directamente, verificar snapshot cargado
+    if (!targetProfile) {
+      targetProfile = db.getSnapshot().profiles.find((p) => p.email.toLowerCase() === cleanEmail) || null;
     }
 
-    if (!profile.is_active) {
+    if (!targetProfile) {
       setIsLoading(false);
-      return { success: false, error: 'La cuenta está desactivada por el administrador.' };
+      return {
+        success: false,
+        error: 'El usuario no está registrado en la base de datos de Supabase. Verifique el correo o contacte al administrador.',
+      };
     }
 
-    setUser(profile);
-    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(profile));
+    if (!targetProfile.is_active) {
+      setIsLoading(false);
+      return { success: false, error: 'Esta cuenta ha sido desactivada por el administrador general.' };
+    }
 
-    // Registrar auditoría de inicio de sesión
-    db.addAuditLog(profile.id, profile.full_name, 'LOGIN_EXITOSO', 'Autenticación', profile.id, 'Inicio de sesión correcto');
+    // Establecer usuario en el estado de la aplicación
+    setUser(targetProfile);
+
+    // Guardar exclusivamente en sessionStorage (NADA en localStorage)
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(targetProfile));
+      }
+    } catch {
+      // Ignorar
+    }
+
+    // Registrar bitácora de auditoría en Supabase
+    db.addAuditLog(
+      targetProfile.id,
+      targetProfile.full_name,
+      'LOGIN_EXITOSO_SUPABASE',
+      'Autenticación',
+      targetProfile.id,
+      `Inicio de sesión exitoso en Supabase Cloud desde ${window.location.hostname}`
+    );
 
     setIsLoading(false);
     return { success: true };
@@ -202,23 +236,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       db.addAuditLog(user.id, user.full_name, 'LOGOUT_USUARIO', 'Autenticación', user.id, 'Cierre de sesión');
     }
     if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.warn('Supabase signOut error:', e);
+      }
     }
     setUser(null);
-    localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(SESSION_KEY);
+      }
+    } catch {
+      // Ignorar
+    }
   };
 
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    const profile = db.getSnapshot().profiles.find((p) => p.email.toLowerCase() === email.toLowerCase());
-    if (!profile) {
-      return { success: false, error: 'No existe ninguna cuenta vinculada a este correo.' };
+    const cleanEmail = email.trim().toLowerCase();
+    let profile = db.getSnapshot().profiles.find((p) => p.email.toLowerCase() === cleanEmail);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: dbProfile } = await supabase.from('profiles').select('*').eq('email', cleanEmail).maybeSingle();
+        if (dbProfile) profile = dbProfile;
+      } catch (e) {
+        console.warn('Supabase reset check error:', e);
+      }
     }
 
-    // Enviar correo a la cola del sistema
+    if (!profile) {
+      return { success: false, error: 'No existe ninguna cuenta vinculada a este correo en Supabase.' };
+    }
+
     db.enqueueEmail(
       profile.email,
       'Recuperación de Contraseña - ERP / POS Ecuador',
-      `<p>Hola ${profile.full_name}, hemos recibido una solicitud para restablecer tu contraseña. Ingresa al enlace seguro de tu empresa para cambiarla.</p>`,
+      `<p>Estimado(a) ${profile.full_name}, se ha emitido una solicitud para restablecer su contraseña de acceso.</p>`,
       'recuperacion_clave',
       profile.id
     );
@@ -226,19 +280,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  // Cambio rápido entre roles para pruebas y supervisión
   const switchUserRole = (targetRole: UserRole) => {
-    const foundUser = db.getSnapshot().profiles.find((p) => p.role === targetRole && p.is_active);
+    const foundUser = allUsers.find((p) => p.role === targetRole && p.is_active);
     if (foundUser) {
       setUser(foundUser);
-      localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(foundUser));
-      db.addAuditLog(foundUser.id, foundUser.full_name, 'CAMBIO_PERFIL_PRUEBA', 'Seguridad', foundUser.id, `Cambio de perfil activo a: ${targetRole}`);
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(foundUser));
+        }
+      } catch {
+        // Ignorar
+      }
+      db.addAuditLog(
+        foundUser.id,
+        foundUser.full_name,
+        'CAMBIO_PERFIL_PRUEBA',
+        'Seguridad',
+        foundUser.id,
+        `Cambio de perfil activo a: ${targetRole}`
+      );
     }
   };
 
   const hasPermission = (permission: PermissionKey): boolean => {
     if (!user) return false;
-    // Administrador siempre tiene acceso total
     if (user.role === 'administrador') return true;
 
     const allowedPermissions = ROLE_DEFAULT_PERMISSIONS[user.role] || [];

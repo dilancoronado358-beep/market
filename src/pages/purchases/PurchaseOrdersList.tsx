@@ -61,19 +61,17 @@ export const PurchaseOrdersList: React.FC = () => {
     const orderCount = purchaseOrders.length + 1;
     const orderNumber = `OC-${new Date().getFullYear()}-${String(orderCount).padStart(4, '0')}`;
 
-    const newOrder: PurchaseOrder = {
-      id: `po-${Date.now()}`,
+    db.createPurchaseOrder({
       order_number: orderNumber,
       supplier_id: selectedSupplierId,
       supplier_name: supplier?.trade_name || supplier?.business_name,
-      created_by: user?.id || 'usr-system',
+      created_by: user?.id && user.id.length > 20 ? user.id : 'd0000000-0000-0000-0000-000000000001',
       status: 'aprobada',
       expected_date: expectedDate,
       subtotal,
       tax_amount: tax,
       total_amount: total,
       notes: orderNotes,
-      created_at: new Date().toISOString(),
       items: orderItems.map((i) => {
         const prod = products.find((p) => p.id === i.productId);
         return {
@@ -88,9 +86,8 @@ export const PurchaseOrdersList: React.FC = () => {
           created_at: new Date().toISOString(),
         };
       }),
-    };
+    });
 
-    db.getSnapshot().purchaseOrders.unshift(newOrder);
     toast.success(`Orden de Compra ${orderNumber} generada y aprobada.`);
     setIsNewOrderModalOpen(false);
     // Reset

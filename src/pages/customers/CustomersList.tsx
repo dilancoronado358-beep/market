@@ -32,8 +32,7 @@ export const CustomersList: React.FC = () => {
       }
     }
 
-    const newCust: Customer = {
-      id: `cust-${Date.now()}`,
+    db.createCustomer({
       identification_type: idType,
       identification_number: idNumber,
       full_name: fullName,
@@ -41,12 +40,8 @@ export const CustomersList: React.FC = () => {
       phone: phone || undefined,
       address: address || undefined,
       is_active: true,
-      total_purchases_count: 0,
-      total_spent: 0,
-      created_at: new Date().toISOString(),
-    };
+    });
 
-    db.getSnapshot().customers.push(newCust);
     toast.success(`Cliente "${fullName}" registrado exitosamente.`);
     setIsNewCustModalOpen(false);
     // Reset

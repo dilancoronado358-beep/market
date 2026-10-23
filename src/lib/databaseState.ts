@@ -1,6 +1,7 @@
 // ==============================================================================
 // MOTOR DE PERSISTENCIA Y ESTADO RELACIONAL TRANSACCIONAL (ERP / POS ECUADOR)
 // Conexión directa a Supabase PostgreSQL y Kardex inmutable
+// PERSISTENCIA REAL DIRECTA EN SUPABASE — SIN LOCALSTORAGE
 // ==============================================================================
 
 import {
@@ -32,8 +33,17 @@ import {
 } from '../types/database';
 import { supabase, isSupabaseConfigured } from './supabase';
 
-// Clave de almacenamiento local seguro para persistencia entre recargas
-const STORAGE_KEY = 'erp_pos_ecuador_db_v1';
+// Generador de UUIDs estándar versión 4 para llaves primarias PostgreSQL de Supabase
+export const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 export interface DatabaseSnapshot {
   settings: SystemSettings;
@@ -62,7 +72,7 @@ export interface DatabaseSnapshot {
   auditLogs: AuditLog[];
 }
 
-// Estado inicial limpio en Cero ("EN 0") — Preparado para Supabase
+// Estado inicial limpio en Cero ("EN 0") — Plantilla inicial antes de sincronizar con Supabase
 export const cleanZeroData: DatabaseSnapshot = {
   settings: {
     store_name: 'ERP / POS Ecuador',
@@ -83,7 +93,7 @@ export const cleanZeroData: DatabaseSnapshot = {
   },
   profiles: [
     {
-      id: 'usr-admin-1',
+      id: 'd0000000-0000-0000-0000-000000000001',
       email: 'admin@erpposecuador.com',
       full_name: 'Administrador Principal',
       role: 'administrador',
@@ -92,7 +102,34 @@ export const cleanZeroData: DatabaseSnapshot = {
       created_at: new Date().toISOString(),
     },
     {
-      id: 'usr-gerente-1',
+      id: '34905f53-dedc-4a92-89c1-4c42b7dfea81',
+      email: 'dcoronado@ensing.lat',
+      full_name: 'DILAN CORONADO',
+      role: 'administrador',
+      is_active: true,
+      phone: '0969930639',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'f1196c8b-28d4-4972-84df-3cbd14f306ba',
+      email: 'dilancoronado358@gmail.com',
+      full_name: 'DILAN CORONADO',
+      role: 'administrador',
+      is_active: true,
+      phone: '0969930639',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'ee9ecaf2-3a09-4a1a-af8f-fd417a743628',
+      email: 'mfalconi@erpposecuador.com',
+      full_name: 'Ing. Mateo Falconi',
+      role: 'cajero',
+      is_active: true,
+      phone: '0981122334',
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'd0000000-0000-0000-0000-000000000002',
       email: 'gerencia@erpposecuador.com',
       full_name: 'Gerencia General',
       role: 'gerente',
@@ -101,7 +138,7 @@ export const cleanZeroData: DatabaseSnapshot = {
       created_at: new Date().toISOString(),
     },
     {
-      id: 'usr-super-1',
+      id: 'd0000000-0000-0000-0000-000000000003',
       email: 'supervisor@erpposecuador.com',
       full_name: 'Supervisor de Operaciones',
       role: 'supervisor',
@@ -110,16 +147,7 @@ export const cleanZeroData: DatabaseSnapshot = {
       created_at: new Date().toISOString(),
     },
     {
-      id: 'usr-cajero-1',
-      email: 'cajero@erpposecuador.com',
-      full_name: 'Cajero Principal',
-      role: 'cajero',
-      is_active: true,
-      phone: '0977112233',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'usr-inventario-1',
+      id: 'd0000000-0000-0000-0000-000000000004',
       email: 'bodega@erpposecuador.com',
       full_name: 'Encargado de Inventario',
       role: 'encargado_inventario',
@@ -128,7 +156,7 @@ export const cleanZeroData: DatabaseSnapshot = {
       created_at: new Date().toISOString(),
     },
     {
-      id: 'usr-compras-1',
+      id: 'd0000000-0000-0000-0000-000000000005',
       email: 'compras@erpposecuador.com',
       full_name: 'Responsable de Compras',
       role: 'responsable_compras',
@@ -137,7 +165,7 @@ export const cleanZeroData: DatabaseSnapshot = {
       created_at: new Date().toISOString(),
     },
     {
-      id: 'usr-auditor-1',
+      id: 'd0000000-0000-0000-0000-000000000006',
       email: 'auditor@erpposecuador.com',
       full_name: 'Auditor Financiero',
       role: 'auditor',
@@ -147,11 +175,11 @@ export const cleanZeroData: DatabaseSnapshot = {
     },
   ],
   categories: [
-    { id: 'cat-1', name: 'Abarrotes y Alimentos', description: 'Víveres, aceites, granos y no perecibles', is_active: true, created_at: new Date().toISOString() },
-    { id: 'cat-2', name: 'Bebidas y Refrescos', description: 'Gaseosas, aguas minerales y jugos', is_active: true, created_at: new Date().toISOString() },
-    { id: 'cat-3', name: 'Lácteos y Huevos', description: 'Leche, quesos, yogures y derivados', is_active: true, created_at: new Date().toISOString() },
-    { id: 'cat-4', name: 'Limpieza y Desinfección', description: 'Detergentes, jabones y desinfectantes', is_active: true, created_at: new Date().toISOString() },
-    { id: 'cat-5', name: 'Snacks y Confitería', description: 'Galletas, papas fritas y chocolates', is_active: true, created_at: new Date().toISOString() },
+    { id: 'c0000000-0000-0000-0000-000000000001', name: 'Abarrotes y Alimentos', description: 'Víveres, aceites, granos y no perecibles', is_active: true, created_at: new Date().toISOString() },
+    { id: 'c0000000-0000-0000-0000-000000000002', name: 'Bebidas y Refrescos', description: 'Gaseosas, aguas minerales y jugos', is_active: true, created_at: new Date().toISOString() },
+    { id: 'c0000000-0000-0000-0000-000000000003', name: 'Lácteos y Huevos', description: 'Leche, quesos, yogures y derivados', is_active: true, created_at: new Date().toISOString() },
+    { id: 'c0000000-0000-0000-0000-000000000004', name: 'Limpieza y Desinfección', description: 'Detergentes, jabones y desinfectantes', is_active: true, created_at: new Date().toISOString() },
+    { id: 'c0000000-0000-0000-0000-000000000005', name: 'Snacks y Confitería', description: 'Galletas, papas fritas y chocolates', is_active: true, created_at: new Date().toISOString() },
   ],
   suppliers: [],
   products: [],
@@ -163,6 +191,17 @@ export const cleanZeroData: DatabaseSnapshot = {
   replacements: [],
   movements: [],
   customers: [
+    {
+      id: 'e0000000-0000-0000-0000-000000000001',
+      identification_type: 'consumidor_final',
+      identification_number: '9999999999999',
+      full_name: 'CONSUMIDOR FINAL',
+      address: 'Ecuador',
+      is_active: true,
+      total_purchases_count: 0,
+      total_spent: 0,
+      created_at: new Date().toISOString(),
+    },
     {
       id: 'cust-cf',
       identification_type: 'consumidor_final',
@@ -183,120 +222,120 @@ export const cleanZeroData: DatabaseSnapshot = {
   internalDocs: [],
   purchaseOrders: [],
   emailQueue: [],
-  automations: [
-    {
-      id: 'aut-1',
-      name: 'Alerta Automática de Stock Mínimo',
-      event_trigger: 'movimiento_inventario',
-      conditions: { min_stock_reached: true },
-      action_type: 'notificacion_sistema',
-      action_payload: { message: 'Stock crítico detectado' },
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'aut-2',
-      name: 'Segregación Inmediata de Averías',
-      event_trigger: 'reporte_incidencia_daño',
-      conditions: { damage_reported: true },
-      action_type: 'bloqueo_pos',
-      action_payload: { quarantine: true },
-      is_active: true,
-      created_at: new Date().toISOString(),
-    },
-  ],
+  automations: [],
   notifications: [],
   auditLogs: [],
 };
 
 export const initialData: DatabaseSnapshot = cleanZeroData;
 
-// Clase que maneja el motor de base de datos
+// Clase que maneja el motor de base de datos conectado directamente a Supabase
 class DatabaseEngine {
   private data: DatabaseSnapshot;
   private listeners: (() => void)[] = [];
 
   constructor() {
-    this.data = this.loadFromStorage();
+    this.cleanLocalStorage();
+    this.data = JSON.parse(JSON.stringify(cleanZeroData));
     this.syncWithSupabase();
   }
 
-  private loadFromStorage(): DatabaseSnapshot {
+  // Elimina cualquier rastro antiguo de localStorage
+  private cleanLocalStorage() {
     try {
       if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('erp_pos_ecuador_db_v1');
+        localStorage.removeItem('erp_pos_ecuador_auth_user');
         localStorage.removeItem('tienda_katy_db_v1');
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed.settings && parsed.categories && parsed.profiles) {
-            parsed.profiles = parsed.profiles.filter((p: any) => !p.email.includes('tiendakaty.ec'));
-            if (!parsed.profiles.some((p: any) => p.email === 'admin@erpposecuador.com')) {
-              parsed.profiles.unshift(cleanZeroData.profiles[0]);
-            }
-            return parsed;
-          }
-        }
+        localStorage.removeItem('tienda_katy_auth_user');
       }
-    } catch (e) {
-      console.warn('Error loading stored DB, falling back to clean zero data', e);
+    } catch {
+      // Ignorar
     }
-    return JSON.parse(JSON.stringify(cleanZeroData));
   }
 
+  // Sincronización completa con Supabase PostgreSQL
   public async syncWithSupabase() {
     if (!isSupabaseConfigured || !supabase) return;
     try {
       const [
         { data: prods },
+        { data: cats },
         { data: supps },
         { data: visits },
+        { data: visitItems },
+        { data: incidents },
+        { data: returns },
+        { data: exchanges },
+        { data: replacements },
         { data: movs },
         { data: custs },
+        { data: sessions },
+        { data: cashMovs },
         { data: salesData },
+        { data: saleItemsData },
+        { data: electronicDocsData },
+        { data: internalDocsData },
+        { data: purchaseOrdersData },
+        { data: auditLogsData },
         { data: settingsData },
         { data: profsData },
       ] = await Promise.all([
-        supabase.from('products').select('*'),
-        supabase.from('suppliers').select('*'),
-        supabase.from('supplier_visits').select('*'),
-        supabase.from('inventory_movements').select('*'),
-        supabase.from('customers').select('*'),
-        supabase.from('sales').select('*'),
+        supabase.from('products').select('*').order('created_at', { ascending: false }),
+        supabase.from('product_categories').select('*').order('name', { ascending: true }),
+        supabase.from('suppliers').select('*').order('business_name', { ascending: true }),
+        supabase.from('supplier_visits').select('*').order('created_at', { ascending: false }),
+        supabase.from('supplier_visit_items').select('*').order('created_at', { ascending: false }),
+        supabase.from('supplier_incidents').select('*').order('created_at', { ascending: false }),
+        supabase.from('supplier_returns').select('*').order('created_at', { ascending: false }),
+        supabase.from('supplier_exchanges').select('*').order('created_at', { ascending: false }),
+        supabase.from('supplier_replacements').select('*').order('created_at', { ascending: false }),
+        supabase.from('inventory_movements').select('*').order('created_at', { ascending: false }),
+        supabase.from('customers').select('*').order('created_at', { ascending: false }),
+        supabase.from('cash_sessions').select('*').order('created_at', { ascending: false }),
+        supabase.from('cash_movements').select('*').order('created_at', { ascending: false }),
+        supabase.from('sales').select('*').order('created_at', { ascending: false }),
+        supabase.from('sale_items').select('*').order('created_at', { ascending: false }),
+        supabase.from('electronic_documents').select('*').order('created_at', { ascending: false }),
+        supabase.from('internal_documents').select('*').order('created_at', { ascending: false }),
+        supabase.from('purchase_orders').select('*').order('created_at', { ascending: false }),
+        supabase.from('audit_logs').select('*').order('created_at', { ascending: false }),
         supabase.from('system_settings').select('*').limit(1),
-        supabase.from('profiles').select('*'),
+        supabase.from('profiles').select('*').order('created_at', { ascending: true }),
       ]);
 
-      let changed = false;
-      if (prods && prods.length > 0) { this.data.products = prods; changed = true; }
-      if (supps && supps.length > 0) { this.data.suppliers = supps; changed = true; }
-      if (visits && visits.length > 0) { this.data.visits = visits; changed = true; }
-      if (movs && movs.length > 0) { this.data.movements = movs; changed = true; }
-      if (custs && custs.length > 0) { this.data.customers = custs; changed = true; }
-      if (salesData && salesData.length > 0) { this.data.sales = salesData; changed = true; }
+      if (cats && cats.length > 0) this.data.categories = cats;
+      if (prods && prods.length > 0) this.data.products = prods;
+      if (supps && supps.length > 0) this.data.suppliers = supps;
+      if (visits && visits.length > 0) this.data.visits = visits;
+      if (visitItems && visitItems.length > 0) this.data.visitItems = visitItems;
+      if (incidents && incidents.length > 0) this.data.incidents = incidents;
+      if (returns && returns.length > 0) this.data.returns = returns;
+      if (exchanges && exchanges.length > 0) this.data.exchanges = exchanges;
+      if (replacements && replacements.length > 0) this.data.replacements = replacements;
+      if (movs && movs.length > 0) this.data.movements = movs;
+      if (custs && custs.length > 0) this.data.customers = custs;
+      if (sessions && sessions.length > 0) this.data.cashSessions = sessions;
+      if (cashMovs && cashMovs.length > 0) this.data.cashMovements = cashMovs;
+      if (salesData && salesData.length > 0) {
+        this.data.sales = salesData.map((s) => ({
+          ...s,
+          items: (saleItemsData || []).filter((i) => i.sale_id === s.id),
+        }));
+      }
+      if (saleItemsData && saleItemsData.length > 0) this.data.saleItems = saleItemsData;
+      if (electronicDocsData && electronicDocsData.length > 0) this.data.electronicDocs = electronicDocsData;
+      if (internalDocsData && internalDocsData.length > 0) this.data.internalDocs = internalDocsData;
+      if (purchaseOrdersData && purchaseOrdersData.length > 0) this.data.purchaseOrders = purchaseOrdersData;
+      if (auditLogsData && auditLogsData.length > 0) this.data.auditLogs = auditLogsData;
       if (settingsData && settingsData.length > 0) {
         this.data.settings = { ...this.data.settings, ...settingsData[0] };
-        changed = true;
       }
       if (profsData && profsData.length > 0) {
-        for (const p of profsData) {
-          const idx = this.data.profiles.findIndex((x) => x.email.toLowerCase() === p.email?.toLowerCase());
-          if (idx >= 0) {
-            this.data.profiles[idx] = { ...this.data.profiles[idx], ...p };
-          } else {
-            this.data.profiles.push({
-              id: p.id,
-              email: p.email,
-              full_name: p.full_name || p.email.split('@')[0],
-              role: p.role || 'cajero',
-              is_active: p.is_active ?? true,
-              phone: p.phone || '',
-              created_at: p.created_at || new Date().toISOString(),
-            });
-          }
-        }
-        changed = true;
+        this.data.profiles = profsData;
       }
-      if (changed) this.persist();
+
+      this.notify();
     } catch (err) {
       console.warn('Supabase sync notice:', err);
     }
@@ -305,10 +344,11 @@ class DatabaseEngine {
   public seedTestData() {
     if (this.data.products.length === 0) {
       this.data.products.push({
-        id: 'prod-test-1',
+        id: 'a765e0b6-2fcb-40fd-b71d-069b246c6a1a',
         internal_code: 'ABR-001',
+        barcode: '7861001234567',
         name: 'Aceite Comestible 1L',
-        category_id: 'cat-1',
+        category_id: 'c0000000-0000-0000-0000-000000000001',
         unit_of_measure: 'unidad',
         unit_purchase: 'unidad',
         unit_conversion_ratio: 1,
@@ -328,9 +368,10 @@ class DatabaseEngine {
     }
     if (this.data.suppliers.length === 0) {
       this.data.suppliers.push({
-        id: 'sup-pronaca',
+        id: '6d1da238-b55b-4f3f-9f81-23b03d172148',
         ruc: '1790005527001',
         business_name: 'PRONACA C.A.',
+        trade_name: 'PRONACA',
         city: 'Quito',
         address: 'Quito, Ecuador',
         payment_terms_days: 15,
@@ -341,12 +382,12 @@ class DatabaseEngine {
     }
     if (this.data.visits.length === 0) {
       this.data.visits.push({
-        id: 'vis-101',
+        id: generateUUID(),
         visit_number: 'VIS-2026-0001',
-        supplier_id: 'sup-pronaca',
+        supplier_id: '6d1da238-b55b-4f3f-9f81-23b03d172148',
         sales_rep_name: 'Carlos Ruiz',
         check_in_time: new Date().toISOString(),
-        receiver_user_id: 'usr-inventario-1',
+        receiver_user_id: 'd0000000-0000-0000-0000-000000000004',
         reason: 'Entrega semanal',
         status: 'en_curso',
         has_incidents: false,
@@ -357,11 +398,11 @@ class DatabaseEngine {
     }
     if (this.data.cashSessions.length === 0) {
       this.data.cashSessions.push({
-        id: 'cs-1',
+        id: generateUUID(),
         session_number: 'CAJA-2026-0001',
         cash_register_id: 'reg-01',
-        user_id: 'usr-cajero-1',
-        user_name: 'Andrea Suárez',
+        user_id: 'ee9ecaf2-3a09-4a1a-af8f-fd417a743628',
+        user_name: 'Ing. Mateo Falconi',
         opened_at: new Date().toISOString(),
         opening_float: 50.00,
         cash_sales_total: 0,
@@ -378,11 +419,7 @@ class DatabaseEngine {
   }
 
   private persist() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
-    } catch (e) {
-      console.error('Error persisting database state', e);
-    }
+    this.cleanLocalStorage();
     this.notify();
   }
 
@@ -405,6 +442,7 @@ class DatabaseEngine {
     this.persist();
   }
 
+  // --- GESTIÓN DE PERFILES Y USUARIOS ---
   public async createProfile(profileData: {
     full_name: string;
     email: string;
@@ -418,9 +456,8 @@ class DatabaseEngine {
       return { success: false, error: 'Ya existe un usuario con ese correo electrónico.' };
     }
 
-    let assignedId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `usr-${Date.now()}`;
+    let assignedId = generateUUID();
 
-    // Si Supabase está configurado, registrar en auth.users y en public.profiles
     if (isSupabaseConfigured && supabase) {
       try {
         if (profileData.password) {
@@ -435,15 +472,13 @@ class DatabaseEngine {
               },
             },
           });
-          if (authErr && !authErr.message.includes('already registered')) {
-            console.warn('Supabase signUp warning:', authErr.message);
-          }
           if (authData?.user?.id) {
             assignedId = authData.user.id;
+          } else if (authErr) {
+            console.warn('Supabase signUp notice:', authErr.message);
           }
         }
 
-        // Insertar / Upsert en la tabla public.profiles de Supabase
         const { data: upsertData, error: upsertErr } = await supabase.from('profiles').upsert({
           id: assignedId,
           email: emailClean,
@@ -454,13 +489,11 @@ class DatabaseEngine {
           updated_at: new Date().toISOString(),
         }).select().maybeSingle();
 
-        if (upsertErr) {
-          console.warn('Supabase profile upsert warning:', upsertErr);
-        } else if (upsertData?.id) {
+        if (!upsertErr && upsertData?.id) {
           assignedId = upsertData.id;
         }
-      } catch (err: any) {
-        console.warn('Supabase profile sync warning:', err);
+      } catch (err) {
+        console.warn('Supabase profile sync error:', err);
       }
     }
 
@@ -478,7 +511,7 @@ class DatabaseEngine {
     this.persist();
 
     this.addAuditLog(
-      'usr-admin',
+      'd0000000-0000-0000-0000-000000000001',
       'Administrador',
       'CREACION_USUARIO',
       'Usuarios & Permisos',
@@ -513,7 +546,7 @@ class DatabaseEngine {
     this.persist();
 
     this.addAuditLog(
-      adminUser?.id || 'usr-admin',
+      adminUser?.id || 'd0000000-0000-0000-0000-000000000001',
       adminUser?.name || 'Administrador',
       isActive ? 'ACTIVACION_USUARIO' : 'DESACTIVACION_USUARIO',
       'Usuarios & Permisos',
@@ -524,7 +557,7 @@ class DatabaseEngine {
     return true;
   }
 
-  // --- REGLAS DE AUDITORÍA ---
+  // --- REGLAS DE AUDITORÍA (INMUTABLE EN SUPABASE) ---
   public addAuditLog(
     userId: string,
     userName: string,
@@ -536,7 +569,7 @@ class DatabaseEngine {
     next?: any
   ) {
     const log: AuditLog = {
-      id: `aud-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateUUID(),
       user_id: userId,
       user_name: userName,
       action,
@@ -545,24 +578,43 @@ class DatabaseEngine {
       reason,
       previous_values: prev,
       new_values: next,
-      ip_address: '192.168.1.X (Local Session)',
+      ip_address: '127.0.0.1 (Supabase Cloud)',
       created_at: new Date().toISOString(),
     };
     this.data.auditLogs.unshift(log);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('audit_logs').insert({
+        id: log.id,
+        user_id: userId && userId.length > 20 ? userId : null,
+        user_name: userName,
+        action,
+        module,
+        record_id: String(recordId || 'general'),
+        reason: reason || action,
+        previous_values: prev || null,
+        new_values: next || null,
+        ip_address: '127.0.0.1'
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase audit log insert error:', error);
+      });
+    }
+
+    this.notify();
   }
 
-  // --- PRODUCTOS Y KARDEX ATÓMICO ---
+  // --- PRODUCTOS Y KARDEX ATÓMICO EN SUPABASE ---
   public createProduct(
     productData: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'current_stock' | 'quarantine_stock' | 'reserved_stock'>,
     initialStock: number,
     userId: string,
     userName: string
   ): Product {
-    const id = `prod-${Date.now()}`;
+    const id = generateUUID();
     const newProduct: Product = {
       ...productData,
       id,
-      current_stock: 0, // Se inicializa en 0 y se actualiza a través del Kardex
+      current_stock: 0,
       reserved_stock: 0,
       quarantine_stock: 0,
       avg_cost: productData.cost_price,
@@ -570,9 +622,33 @@ class DatabaseEngine {
       updated_at: new Date().toISOString(),
     };
 
-    this.data.products.push(newProduct);
+    this.data.products.unshift(newProduct);
 
-    // Si tiene stock inicial, registrar movimiento inmutable en Kardex
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('products').insert({
+        id: newProduct.id,
+        internal_code: newProduct.internal_code,
+        barcode: newProduct.barcode || null,
+        name: newProduct.name,
+        description: newProduct.description || null,
+        category_id: newProduct.category_id && newProduct.category_id.length > 20 ? newProduct.category_id : null,
+        unit_of_measure: newProduct.unit_of_measure,
+        cost_price: newProduct.cost_price,
+        avg_cost: newProduct.avg_cost,
+        sale_price: newProduct.sale_price,
+        iva_rate: newProduct.iva_rate,
+        min_stock: newProduct.min_stock,
+        max_stock: newProduct.max_stock,
+        current_stock: 0,
+        reserved_stock: 0,
+        quarantine_stock: 0,
+        main_supplier_id: newProduct.main_supplier_id && newProduct.main_supplier_id.length > 20 ? newProduct.main_supplier_id : null,
+        is_active: true
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase product insert error:', error);
+      });
+    }
+
     if (initialStock > 0) {
       this.executeKardexMovement({
         productId: id,
@@ -589,7 +665,7 @@ class DatabaseEngine {
     }
 
     this.addAuditLog(userId, userName, 'CREACION_PRODUCTO', 'Catálogo Productos', newProduct.internal_code, 'Nuevo producto registrado', null, newProduct);
-    this.persist();
+    this.notify();
     return this.data.products.find((p) => p.id === id)!;
   }
 
@@ -610,18 +686,34 @@ class DatabaseEngine {
       updated_at: new Date().toISOString(),
     };
 
-    // No permitir modificar stock directamente fuera del Kardex
     updated.current_stock = previous.current_stock;
     updated.quarantine_stock = previous.quarantine_stock;
-
     this.data.products[idx] = updated;
 
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('products').update({
+        name: updated.name,
+        internal_code: updated.internal_code,
+        barcode: updated.barcode || null,
+        description: updated.description || null,
+        cost_price: updated.cost_price,
+        sale_price: updated.sale_price,
+        iva_rate: updated.iva_rate,
+        min_stock: updated.min_stock,
+        max_stock: updated.max_stock,
+        is_active: updated.is_active,
+        updated_at: updated.updated_at
+      }).eq('id', id).then(({ error }) => {
+        if (error) console.warn('Supabase product update error:', error);
+      });
+    }
+
     this.addAuditLog(userId, userName, 'ACTUALIZACION_PRODUCTO', 'Catálogo Productos', updated.internal_code, auditReason, previous, updated);
-    this.persist();
+    this.notify();
     return updated;
   }
 
-  // --- KARDEX INMUTABLE Y COSTO PROMEDIO PONDERADO ---
+  // --- KARDEX INMUTABLE Y COSTO PROMEDIO EN SUPABASE ---
   public executeKardexMovement(params: {
     productId: string;
     movementType: import('../types/database').MovementType;
@@ -649,7 +741,6 @@ class DatabaseEngine {
 
     if (params.quantityIn > 0) {
       newStock = prevStock + params.quantityIn;
-      // Recalcular Costo Promedio Ponderado para compras o recepciones
       if (['inventario_inicial', 'compra_recibida', 'reposicion'].includes(params.movementType) && params.unitCost > 0) {
         if (newStock > 0) {
           newAvgCost = Number((((prevStock * prevAvgCost) + (params.quantityIn * params.unitCost)) / newStock).toFixed(4));
@@ -664,14 +755,13 @@ class DatabaseEngine {
       newStock = prevStock - params.quantityOut;
     }
 
-    // Actualizar producto
     product.current_stock = newStock;
     product.avg_cost = newAvgCost;
     product.updated_at = new Date().toISOString();
 
     const movementNumber = `MOV-${new Date().getFullYear()}-${String(this.data.movements.length + 1).padStart(4, '0')}`;
     const movement: InventoryMovement = {
-      id: `mov-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateUUID(),
       movement_number: movementNumber,
       product_id: product.id,
       product_name: product.name,
@@ -698,11 +788,45 @@ class DatabaseEngine {
 
     this.data.movements.unshift(movement);
 
-    // Verificar si el nuevo stock cae por debajo del mínimo para disparar alerta
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('inventory_movements').insert({
+        id: movement.id,
+        movement_number: movement.movement_number,
+        product_id: movement.product_id,
+        product_name: movement.product_name,
+        movement_type: movement.movement_type,
+        quantity_in: movement.quantity_in,
+        quantity_out: movement.quantity_out,
+        previous_stock: movement.previous_stock,
+        new_stock: movement.new_stock,
+        unit_cost: movement.unit_cost,
+        total_cost: movement.total_cost,
+        doc_type: movement.doc_type || null,
+        doc_id: movement.doc_id || null,
+        doc_number: movement.doc_number || null,
+        supplier_id: movement.supplier_id && movement.supplier_id.length > 20 ? movement.supplier_id : null,
+        user_id: movement.user_id && movement.user_id.length > 20 ? movement.user_id : null,
+        user_name: movement.user_name || null,
+        reason: movement.reason,
+        is_reversal: movement.is_reversal
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase kardex insert error:', error);
+      });
+
+      supabase.from('products').update({
+        current_stock: newStock,
+        avg_cost: newAvgCost,
+        updated_at: new Date().toISOString()
+      }).eq('id', product.id).then(({ error }) => {
+        if (error) console.warn('Supabase product stock update error:', error);
+      });
+    }
+
     if (newStock <= product.min_stock) {
       this.triggerLowStockNotification(product);
     }
 
+    this.notify();
     return movement;
   }
 
@@ -712,7 +836,7 @@ class DatabaseEngine {
     );
     if (!existing) {
       this.data.notifications.unshift({
-        id: `notif-${Date.now()}`,
+        id: generateUUID(),
         title: `Alerta: Stock Bajo en ${product.name}`,
         message: `El producto "${product.name}" tiene ${product.current_stock} ${product.unit_of_measure} (mínimo: ${product.min_stock}).`,
         type: 'warning',
@@ -723,8 +847,7 @@ class DatabaseEngine {
     }
   }
 
-  // --- MÓDULO PRIORITARIO: EXPEDIENTE DIGITAL DE VISITAS DE PROVEEDORES ---
-
+  // --- VISITAS DE PROVEEDORES (EXPEDIENTE DIGITAL) EN SUPABASE ---
   public createSupplierVisit(
     visitData: {
       supplier_id: string;
@@ -739,7 +862,7 @@ class DatabaseEngine {
     const visitCount = this.data.visits.length + 1;
     const visitNumber = `VIS-${new Date().getFullYear()}-${String(visitCount).padStart(4, '0')}`;
     const newVisit: SupplierVisit = {
-      id: `vis-${Date.now()}`,
+      id: generateUUID(),
       visit_number: visitNumber,
       supplier_id: visitData.supplier_id,
       sales_rep_name: visitData.sales_rep_name,
@@ -756,8 +879,27 @@ class DatabaseEngine {
     };
 
     this.data.visits.unshift(newVisit);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('supplier_visits').insert({
+        id: newVisit.id,
+        visit_number: newVisit.visit_number,
+        supplier_id: newVisit.supplier_id,
+        sales_rep_name: newVisit.sales_rep_name,
+        receiver_user_id: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        reason: newVisit.reason,
+        invoice_or_doc_ref: newVisit.invoice_or_doc_ref || null,
+        status: newVisit.status,
+        notes: newVisit.notes || null,
+        has_incidents: false,
+        has_replacements_pending: false
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase visit insert error:', error);
+      });
+    }
+
     this.addAuditLog(userId, userName, 'REGISTRO_LLEGADA_VISITA', 'Visitas Proveedores', visitNumber, `Llegada de proveedor: ${newVisit.sales_rep_name}`, null, newVisit);
-    this.persist();
+    this.notify();
     return newVisit;
   }
 
@@ -786,7 +928,7 @@ class DatabaseEngine {
     if (!product) throw new Error('Producto no encontrado');
 
     const newItem: SupplierVisitItem = {
-      id: `vi-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateUUID(),
       visit_id: visitId,
       product_id: itemData.productId,
       product_name: product.name,
@@ -805,9 +947,29 @@ class DatabaseEngine {
       created_at: new Date().toISOString(),
     };
 
-    this.data.visitItems.push(newItem);
+    this.data.visitItems.unshift(newItem);
 
-    // 1. Ingresar cantidad aceptada al stock vendible mediante Kardex
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('supplier_visit_items').insert({
+        id: newItem.id,
+        visit_id: newItem.visit_id,
+        product_id: newItem.product_id,
+        product_name: newItem.product_name,
+        declared_qty: newItem.declared_qty,
+        physical_qty: newItem.received_qty,
+        accepted_qty: newItem.accepted_qty,
+        rejected_qty: newItem.rejected_qty,
+        unit_cost: newItem.unit_cost,
+        batch_number: newItem.lot_number || null,
+        expiration_date: newItem.expiration_date || null,
+        status: newItem.status,
+        difference_reason: newItem.difference_reason || null,
+        notes: newItem.notes || null
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase visit item insert error:', error);
+      });
+    }
+
     if (itemData.acceptedQty > 0) {
       this.executeKardexMovement({
         productId: product.id,
@@ -825,12 +987,10 @@ class DatabaseEngine {
       });
     }
 
-    // 2. Si hay productos rechazados o dañados, aislarlos a cuarentena o registrar incidencia
     if (itemData.rejectedQty > 0 && itemData.status === 'dañado') {
       product.quarantine_stock = (product.quarantine_stock || 0) + itemData.rejectedQty;
       visit.has_incidents = true;
 
-      // Crear automáticamente incidencia por daño
       this.reportSupplierIncident({
         visit_id: visit.id,
         supplier_id: visit.supplier_id,
@@ -846,11 +1006,10 @@ class DatabaseEngine {
     visit.updated_at = new Date().toISOString();
 
     this.addAuditLog(userId, userName, 'RECEPCION_LINEA_MERCADERIA', 'Visitas Proveedores', visit.visit_number, `Línea recibida: ${product.name}`, null, newItem);
-    this.persist();
+    this.notify();
     return newItem;
   }
 
-  // Creación rápida de producto nuevo desde la visita de proveedor sin perder contexto
   public createProductFromVisit(
     visitId: string,
     productData: {
@@ -878,7 +1037,6 @@ class DatabaseEngine {
     const visit = this.data.visits.find((v) => v.id === visitId);
     if (!visit) throw new Error('Visita no encontrada');
 
-    // Crear el producto en catálogo con stock 0 (se aumentará con la recepción de la visita)
     const product = this.createProduct({
       ...productData,
       main_supplier_id: visit.supplier_id,
@@ -890,7 +1048,6 @@ class DatabaseEngine {
       is_active: true,
     }, 0, userId, userName);
 
-    // Agregar la línea de recepción a la visita
     this.addVisitReceiptItem(visitId, {
       productId: product.id,
       declaredQty: receiptData.declaredQty,
@@ -908,7 +1065,6 @@ class DatabaseEngine {
     return product;
   }
 
-  // Reportar incidencia / producto dañado
   public reportSupplierIncident(
     params: {
       visit_id?: string;
@@ -927,7 +1083,7 @@ class DatabaseEngine {
     const incidentNumber = `INC-${new Date().getFullYear()}-${String(incidentCount).padStart(4, '0')}`;
 
     const incident: SupplierIncident = {
-      id: `inc-${Date.now()}`,
+      id: generateUUID(),
       incident_number: incidentNumber,
       visit_id: params.visit_id,
       supplier_id: params.supplier_id,
@@ -947,9 +1103,27 @@ class DatabaseEngine {
 
     this.data.incidents.unshift(incident);
 
-    // Registrar notificación interna
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('supplier_incidents').insert({
+        id: incident.id,
+        incident_number: incident.incident_number,
+        visit_id: incident.visit_id && incident.visit_id.length > 20 ? incident.visit_id : null,
+        supplier_id: incident.supplier_id,
+        product_id: incident.product_id,
+        product_name: incident.product_name,
+        affected_qty: incident.affected_qty,
+        lot_number: incident.lot_number || null,
+        damage_reason: incident.damage_reason,
+        reported_by: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        estimated_value: incident.estimated_value,
+        status: incident.status
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase incident insert error:', error);
+      });
+    }
+
     this.data.notifications.unshift({
-      id: `notif-${Date.now()}`,
+      id: generateUUID(),
       title: `Incidencia Registrada: ${incidentNumber}`,
       message: `Se reportaron ${params.affected_qty} unidades dañadas de "${product?.name}". Requiere seguimiento con proveedor.`,
       type: 'danger',
@@ -959,11 +1133,10 @@ class DatabaseEngine {
     });
 
     this.addAuditLog(userId, userName, 'REPORTE_INCIDENCIA_DAÑO', 'Visitas Proveedores', incidentNumber, params.damage_reason, null, incident);
-    this.persist();
+    this.notify();
     return incident;
   }
 
-  // Registro de mercadería que se lleva el proveedor (Retiros Físicos y Devoluciones)
   public registerSupplierReturn(
     params: {
       supplierId: string;
@@ -972,7 +1145,7 @@ class DatabaseEngine {
       carrierOrRepName?: string;
       documentRef?: string;
       notes?: string;
-      confirmPhysicalExit: boolean; // Si es true, el producto ya cruzó la puerta
+      confirmPhysicalExit: boolean;
     },
     userId: string,
     userName: string
@@ -981,7 +1154,7 @@ class DatabaseEngine {
     const returnNumber = `DEV-${new Date().getFullYear()}-${String(returnCount).padStart(4, '0')}`;
 
     const returnRecord: SupplierReturn = {
-      id: `ret-${Date.now()}`,
+      id: generateUUID(),
       return_number: returnNumber,
       visit_id: params.visitId,
       supplier_id: params.supplierId,
@@ -996,7 +1169,7 @@ class DatabaseEngine {
       items: params.items.map((i) => {
         const prod = this.data.products.find((p) => p.id === i.productId);
         return {
-          id: `ri-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          id: generateUUID(),
           return_id: '',
           product_id: i.productId,
           product_name: prod?.name,
@@ -1011,16 +1184,30 @@ class DatabaseEngine {
 
     this.data.returns.unshift(returnRecord);
 
-    // Si se confirma el retiro físico, descontar del stock en cuarentena (o vendible) y registrar Kardex
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('supplier_returns').insert({
+        id: returnRecord.id,
+        return_number: returnRecord.return_number,
+        visit_id: returnRecord.visit_id && returnRecord.visit_id.length > 20 ? returnRecord.visit_id : null,
+        supplier_id: returnRecord.supplier_id,
+        created_by: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        status: returnRecord.status,
+        authorized_by: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        carrier_or_rep_name: returnRecord.carrier_or_rep_name || null,
+        document_ref: returnRecord.document_ref || null,
+        notes: returnRecord.notes || null
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase return insert error:', error);
+      });
+    }
+
     if (params.confirmPhysicalExit) {
       params.items.forEach((item) => {
         const prod = this.data.products.find((p) => p.id === item.productId);
         if (prod) {
-          // Si estaba en cuarentena por daño, descontar de cuarentena
           if (prod.quarantine_stock >= item.quantity) {
             prod.quarantine_stock -= item.quantity;
           } else {
-            // Descontar de stock regular con Kardex de devolución a proveedor
             this.executeKardexMovement({
               productId: prod.id,
               movementType: 'devolucion_proveedor',
@@ -1041,11 +1228,10 @@ class DatabaseEngine {
     }
 
     this.addAuditLog(userId, userName, 'RETIRO_MERCADERIA_PROVEEDOR', 'Visitas Proveedores', returnNumber, `Devolución ${returnNumber}: salida física ${params.confirmPhysicalExit ? 'confirmada' : 'preparada'}`, null, returnRecord);
-    this.persist();
+    this.notify();
     return returnRecord;
   }
 
-  // Intercambio mano a mano de productos (Cambios de mercadería dañada o vencida por nueva)
   public processSupplierExchange(
     params: {
       visitId?: string;
@@ -1072,7 +1258,7 @@ class DatabaseEngine {
     const exchangeNumber = `CAM-${new Date().getFullYear()}-${String(exchangeCount).padStart(4, '0')}`;
 
     const exchange: SupplierExchange = {
-      id: `exc-${Date.now()}`,
+      id: generateUUID(),
       exchange_number: exchangeNumber,
       visit_id: params.visitId,
       supplier_id: params.supplierId,
@@ -1084,7 +1270,7 @@ class DatabaseEngine {
       created_at: new Date().toISOString(),
       items: [
         {
-          id: `exci-${Date.now()}`,
+          id: generateUUID(),
           exchange_id: '',
           original_product_id: origProd.id,
           original_product_name: origProd.name,
@@ -1102,7 +1288,21 @@ class DatabaseEngine {
 
     this.data.exchanges.unshift(exchange);
 
-    // Movimiento Kardex: Salida de original y entrada de reemplazo
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('supplier_exchanges').insert({
+        id: exchange.id,
+        exchange_number: exchange.exchange_number,
+        visit_id: exchange.visit_id && exchange.visit_id.length > 20 ? exchange.visit_id : null,
+        supplier_id: exchange.supplier_id,
+        processed_by: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        status: exchange.status,
+        price_difference: exchange.price_difference,
+        notes: exchange.notes || null
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase exchange insert error:', error);
+      });
+    }
+
     if (origProd.quarantine_stock >= params.originalQty) {
       origProd.quarantine_stock -= params.originalQty;
     } else {
@@ -1136,11 +1336,10 @@ class DatabaseEngine {
     });
 
     this.addAuditLog(userId, userName, 'CAMBIO_MANO_A_MANO_PRODUCTO', 'Visitas Proveedores', exchangeNumber, `Cambio de ${params.originalQty}x ${origProd.name} por ${params.replacementQty}x ${replProd.name}`, null, exchange);
-    this.persist();
+    this.notify();
     return exchange;
   }
 
-  // Registro de compromiso de reposición pendiente
   public createSupplierReplacement(
     params: {
       originVisitId?: string;
@@ -1160,7 +1359,7 @@ class DatabaseEngine {
     const replacementNumber = `REP-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
 
     const replacement: SupplierReplacement = {
-      id: `rep-${Date.now()}`,
+      id: generateUUID(),
       replacement_number: replacementNumber,
       origin_visit_id: params.originVisitId,
       origin_incident_id: params.originIncidentId,
@@ -1180,6 +1379,27 @@ class DatabaseEngine {
 
     this.data.replacements.unshift(replacement);
 
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('supplier_replacements').insert({
+        id: replacement.id,
+        replacement_number: replacement.replacement_number,
+        origin_visit_id: replacement.origin_visit_id && replacement.origin_visit_id.length > 20 ? replacement.origin_visit_id : null,
+        supplier_id: replacement.supplier_id,
+        product_id: replacement.product_id,
+        product_name: replacement.product_name,
+        affected_qty: replacement.affected_qty,
+        agreed_qty: replacement.agreed_qty,
+        delivered_qty: 0,
+        commitment_date: replacement.commitment_date,
+        expected_delivery_date: replacement.expected_delivery_date,
+        status: replacement.status,
+        responsible_user_id: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        notes: replacement.notes || null
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase replacement insert error:', error);
+      });
+    }
+
     if (params.originVisitId) {
       const visit = this.data.visits.find((v) => v.id === params.originVisitId);
       if (visit) {
@@ -1189,11 +1409,10 @@ class DatabaseEngine {
     }
 
     this.addAuditLog(userId, userName, 'COMPROMISO_REPOSICION_REGISTRADO', 'Visitas Proveedores', replacementNumber, `Compromiso de entrega de ${params.agreedQty} unidades para el ${params.expectedDeliveryDate}`, null, replacement);
-    this.persist();
+    this.notify();
     return replacement;
   }
 
-  // Cumplimiento de reposición pendiente
   public fulfillSupplierReplacement(
     replacementId: string,
     qtyDelivered: number,
@@ -1211,7 +1430,16 @@ class DatabaseEngine {
       rep.status = 'entrega_parcial';
     }
 
-    // Ingresar mercadería al inventario vendible
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('supplier_replacements').update({
+        delivered_qty: rep.delivered_qty,
+        status: rep.status,
+        updated_at: new Date().toISOString()
+      }).eq('id', replacementId).then(({ error }) => {
+        if (error) console.warn('Supabase replacement update error:', error);
+      });
+    }
+
     const prod = this.data.products.find((p) => p.id === rep.product_id);
     if (prod) {
       this.executeKardexMovement({
@@ -1231,11 +1459,10 @@ class DatabaseEngine {
     }
 
     this.addAuditLog(userId, userName, 'REPOSICION_PROVEEDOR_RECIBIDA', 'Visitas Proveedores', rep.replacement_number, `Recibidas ${qtyDelivered} unidades de reposición`, null, rep);
-    this.persist();
+    this.notify();
     return rep;
   }
 
-  // Cierre de visita de proveedor y generación de acta
   public closeSupplierVisit(
     visitId: string,
     closingNotes: string,
@@ -1251,12 +1478,22 @@ class DatabaseEngine {
     visit.acta_generated_at = new Date().toISOString();
     visit.updated_at = new Date().toISOString();
 
-    // Crear correo automático en cola con el acta de visita
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('supplier_visits').update({
+        check_out_time: visit.check_out_time,
+        status: visit.status,
+        notes: visit.notes,
+        updated_at: visit.updated_at
+      }).eq('id', visitId).then(({ error }) => {
+        if (error) console.warn('Supabase visit close update error:', error);
+      });
+    }
+
     const supplier = this.data.suppliers.find((s) => s.id === visit.supplier_id);
     if (supplier?.email) {
       this.enqueueEmail(
         supplier.email,
-        `Acta de Visita Finalizada - ${visit.visit_number} (TIENDA KATY)`,
+        `Acta de Visita Finalizada - ${visit.visit_number} (ERP / POS Ecuador)`,
         `<p>Estimados ${supplier.business_name}, se ha cerrado la visita ${visit.visit_number} con éxito. Adjuntamos el acta digital para sus registros.</p>`,
         'acta_visita',
         visit.id
@@ -1264,12 +1501,11 @@ class DatabaseEngine {
     }
 
     this.addAuditLog(userId, userName, 'CIERRE_VISITA_PROVEEDOR', 'Visitas Proveedores', visit.visit_number, `Cierre formal de visita con generación de acta`, null, visit);
-    this.persist();
+    this.notify();
     return visit;
   }
 
-  // --- PUNTO DE VENTA (POS) Y FACTURACIÓN ---
-
+  // --- PUNTO DE VENTA (POS) Y VENTAS EN SUPABASE ---
   public processSale(
     params: {
       customerId: string;
@@ -1282,10 +1518,11 @@ class DatabaseEngine {
     userId: string,
     userName: string
   ): Sale {
-    const customer = this.data.customers.find((c) => c.id === params.customerId);
+    const customer = this.data.customers.find(
+      (c) => c.id === params.customerId || (params.customerId === 'cust-cf' && (c.id === 'cust-cf' || c.identification_type === 'consumidor_final'))
+    ) || (params.customerId === 'cust-cf' ? this.data.customers[0] : null);
     if (!customer) throw new Error('Cliente no encontrado');
 
-    // 1. Validar existencias de todos los productos en una sola pasada atómica
     for (const item of params.items) {
       const prod = this.data.products.find((p) => p.id === item.productId);
       if (!prod) throw new Error(`Producto ${item.productId} no existe`);
@@ -1294,14 +1531,13 @@ class DatabaseEngine {
       }
     }
 
-    // 2. Calcular importes y desglose de IVA (Ecuador: 0% e IVA vigente ej. 15%)
     let subtotal0 = 0;
     let subtotalIva = 0;
     let ivaAmount = 0;
     let totalDiscount = 0;
 
     const saleItems: SaleItem[] = [];
-    const saleId = `sale-${Date.now()}`;
+    const saleId = generateUUID();
     const saleCount = this.data.sales.length + 1;
     const saleNumber = `VTA-${new Date().getFullYear()}-${String(saleCount).padStart(5, '0')}`;
     const internalDocNumber = `TKT-${this.data.settings.establishment_code}-${String(saleCount).padStart(6, '0')}`;
@@ -1326,7 +1562,7 @@ class DatabaseEngine {
       }
 
       saleItems.push({
-        id: `si-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        id: generateUUID(),
         sale_id: saleId,
         product_id: prod.id,
         product_name: prod.name,
@@ -1351,7 +1587,6 @@ class DatabaseEngine {
       throw new Error(`Monto pagado ($${params.amountPaid}) es menor al total de la venta ($${totalAmount})`);
     }
 
-    // 3. Crear registro de venta
     const newSale: Sale = {
       id: saleId,
       sale_number: saleNumber,
@@ -1379,7 +1614,50 @@ class DatabaseEngine {
     this.data.sales.unshift(newSale);
     this.data.saleItems.push(...saleItems);
 
-    // 4. Descontar inventario y registrar en Kardex para cada línea
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('sales').insert({
+        id: newSale.id,
+        sale_number: newSale.sale_number,
+        customer_id: newSale.customer_id && newSale.customer_id.length > 20 ? newSale.customer_id : null,
+        customer_name: newSale.customer_name,
+        customer_id_number: newSale.customer_id_number,
+        seller_user_id: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        seller_name: userName,
+        subtotal_0: newSale.subtotal_0,
+        subtotal_iva: newSale.subtotal_iva,
+        iva_amount: newSale.iva_amount,
+        discount_amount: newSale.discount_amount,
+        total_amount: newSale.total_amount,
+        payment_method: newSale.payment_method,
+        amount_paid: newSale.amount_paid,
+        change_given: newSale.change_given,
+        status: 'completada',
+        internal_doc_number: newSale.internal_doc_number
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase sale insert error:', error);
+      });
+
+      const itemsToInsert = saleItems.map((si) => ({
+        id: si.id,
+        sale_id: saleId,
+        product_id: si.product_id && si.product_id.length > 20 ? si.product_id : null,
+        product_name: si.product_name,
+        product_barcode: si.product_barcode || null,
+        quantity: si.quantity,
+        unit_cost: si.unit_cost,
+        unit_price: si.unit_price,
+        discount_percent: si.discount_percent,
+        discount_amount: si.discount_amount,
+        iva_rate: si.iva_rate,
+        subtotal: si.subtotal,
+        iva_amount: si.iva_amount,
+        total: si.total
+      }));
+      supabase.from('sale_items').insert(itemsToInsert).then(({ error }) => {
+        if (error) console.warn('Supabase sale_items insert error:', error);
+      });
+    }
+
     for (const item of saleItems) {
       this.executeKardexMovement({
         productId: item.product_id,
@@ -1397,7 +1675,6 @@ class DatabaseEngine {
       });
     }
 
-    // 5. Si hay una sesión de caja abierta, acumular las ventas correspondientes
     if (params.sessionId) {
       const session = this.data.cashSessions.find((s) => s.id === params.sessionId && s.status === 'abierta');
       if (session) {
@@ -1409,16 +1686,25 @@ class DatabaseEngine {
         } else if (params.paymentMethod === 'transferencia') {
           session.transfer_sales_total += totalAmount;
         }
+
+        if (isSupabaseConfigured && supabase) {
+          supabase.from('cash_sessions').update({
+            cash_sales_total: session.cash_sales_total,
+            card_sales_total: session.card_sales_total,
+            transfer_sales_total: session.transfer_sales_total,
+            expected_cash: session.expected_cash
+          }).eq('id', session.id).then(({ error }) => {
+            if (error) console.warn('Supabase cash session update error:', error);
+          });
+        }
       }
     }
 
-    // 6. Actualizar métricas del cliente
     customer.total_purchases_count += 1;
     customer.total_spent += totalAmount;
 
-    // 7. Emitir comprobante interno
     this.data.internalDocs.unshift({
-      id: `int-${Date.now()}`,
+      id: generateUUID(),
       doc_number: internalDocNumber,
       doc_type: 'comprobante_venta_interno',
       reference_id: newSale.id,
@@ -1438,7 +1724,7 @@ class DatabaseEngine {
     });
 
     this.addAuditLog(userId, userName, 'VENTA_POS_CONFIRMADA', 'Punto de Venta', saleNumber, `Venta procesada por $${totalAmount}`, null, newSale);
-    this.persist();
+    this.notify();
     return newSale;
   }
 
@@ -1450,7 +1736,14 @@ class DatabaseEngine {
     sale.status = 'anulada';
     sale.notes = `${sale.notes || ''} [ANULADA: ${reason}]`.trim();
 
-    // Revertir inventario mediante movimientos de Kardex autorizados
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('sales').update({
+        status: 'anulada'
+      }).eq('id', saleId).then(({ error }) => {
+        if (error) console.warn('Supabase sale cancel update error:', error);
+      });
+    }
+
     const items = this.data.saleItems.filter((i) => i.sale_id === saleId);
     for (const item of items) {
       const prod = this.data.products.find((p) => p.id === item.product_id);
@@ -1473,7 +1766,6 @@ class DatabaseEngine {
       }
     }
 
-    // Revertir sesión de caja si aplica
     if (sale.session_id) {
       const session = this.data.cashSessions.find((s) => s.id === sale.session_id && s.status === 'abierta');
       if (session && sale.payment_method === 'efectivo') {
@@ -1483,12 +1775,11 @@ class DatabaseEngine {
     }
 
     this.addAuditLog(userId, userName, 'ANULACION_VENTA', 'Punto de Venta', sale.sale_number, reason, null, sale);
-    this.persist();
+    this.notify();
     return sale;
   }
 
-  // --- SESIÓN Y ARQUEO DE CAJA ---
-
+  // --- SESIÓN Y ARQUEO DE CAJA EN SUPABASE ---
   public openCashSession(
     registerCode: string,
     openingFloat: number,
@@ -1505,7 +1796,7 @@ class DatabaseEngine {
     const sessionNumber = `TUR-${new Date().getFullYear()}-${String(sessionCount).padStart(4, '0')}`;
 
     const newSession: CashSession = {
-      id: `cs-${Date.now()}`,
+      id: generateUUID(),
       session_number: sessionNumber,
       cash_register_id: registerCode,
       user_id: userId,
@@ -1525,8 +1816,25 @@ class DatabaseEngine {
     };
 
     this.data.cashSessions.unshift(newSession);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('cash_sessions').insert({
+        id: newSession.id,
+        session_number: newSession.session_number,
+        cash_register_id: newSession.cash_register_id,
+        user_id: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        user_name: userName,
+        opening_float: openingFloat,
+        expected_cash: openingFloat,
+        status: 'abierta',
+        notes: notes || null
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase cash session insert error:', error);
+      });
+    }
+
     this.addAuditLog(userId, userName, 'APERTURA_TURNO_CAJA', 'Caja y Turnos', sessionNumber, `Apertura con fondo de $${openingFloat}`, null, newSession);
-    this.persist();
+    this.notify();
     return newSession;
   }
 
@@ -1553,7 +1861,7 @@ class DatabaseEngine {
     }
 
     const movement: CashMovement = {
-      id: `cm-${Date.now()}`,
+      id: generateUUID(),
       session_id: sessionId,
       movement_type: type,
       amount,
@@ -1564,8 +1872,31 @@ class DatabaseEngine {
     };
 
     this.data.cashMovements.unshift(movement);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('cash_movements').insert({
+        id: movement.id,
+        session_id: sessionId,
+        movement_type: type,
+        amount: movement.amount,
+        reason: movement.reason,
+        authorized_by: userId && userId.length > 20 ? userId : null,
+        receipt_doc_ref: movement.receipt_doc_ref
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase cash movement insert error:', error);
+      });
+
+      supabase.from('cash_sessions').update({
+        expected_cash: session.expected_cash,
+        inflows_total: session.inflows_total,
+        outflows_total: session.outflows_total
+      }).eq('id', sessionId).then(({ error }) => {
+        if (error) console.warn('Supabase cash session update error:', error);
+      });
+    }
+
     this.addAuditLog(userId, userName, `MOVIMIENTO_CAJA_${type.toUpperCase()}`, 'Caja y Turnos', session.session_number, `$${amount}: ${reason}`, null, movement);
-    this.persist();
+    this.notify();
     return movement;
   }
 
@@ -1588,6 +1919,19 @@ class DatabaseEngine {
     session.supervisor_id = supervisorId;
     session.notes = notes ? `${session.notes || ''}\n[Cierre]: ${notes}`.trim() : session.notes;
 
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('cash_sessions').update({
+        closed_at: session.closed_at,
+        actual_counted_cash: actualCountedCash,
+        difference,
+        status: session.status,
+        supervisor_id: supervisorId && supervisorId.length > 20 ? supervisorId : null,
+        notes: session.notes
+      }).eq('id', sessionId).then(({ error }) => {
+        if (error) console.warn('Supabase cash session close error:', error);
+      });
+    }
+
     this.addAuditLog(
       userId,
       userName,
@@ -1598,15 +1942,42 @@ class DatabaseEngine {
       null,
       session
     );
-    this.persist();
+    this.notify();
     return session;
   }
 
-  // --- FACTURACIÓN ELECTRÓNICA SRI ECUADOR ---
+  // --- FACTURACIÓN ELECTRÓNICA SRI ECUADOR EN SUPABASE ---
   public registerElectronicDocument(doc: ElectronicDocument, userId: string, userName: string) {
+    if (!doc.id || doc.id.startsWith('sri-')) {
+      doc.id = generateUUID();
+    }
     this.data.electronicDocs.unshift(doc);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('electronic_documents').insert({
+        id: doc.id,
+        doc_type: doc.doc_type,
+        environment: doc.environment,
+        emission_type: doc.emission_type,
+        establishment: doc.establishment,
+        emission_point: doc.emission_point,
+        sequential: doc.sequential,
+        access_key: doc.access_key,
+        customer_id: doc.customer_id && doc.customer_id.length > 20 ? doc.customer_id : null,
+        customer_name: doc.customer_name || null,
+        total_amount: doc.total_amount,
+        status: doc.status,
+        authorization_number: doc.authorization_number || null,
+        authorized_at: doc.authorized_at || null,
+        xml_content: doc.xml_content || null,
+        error_message: doc.error_message || null
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase electronic doc insert error:', error);
+      });
+    }
+
     this.addAuditLog(userId, userName, 'EMISION_DOC_ELECTRONICO_SRI', 'Facturación Electrónica', doc.access_key, `Documento ${doc.sequential} estado: ${doc.status}`, null, doc);
-    this.persist();
+    this.notify();
   }
 
   public updateElectronicDocumentStatus(
@@ -1624,11 +1995,118 @@ class DatabaseEngine {
       }
       doc.error_message = errorMessage;
       doc.updated_at = new Date().toISOString();
-      this.persist();
+
+      if (isSupabaseConfigured && supabase) {
+        supabase.from('electronic_documents').update({
+          status: doc.status,
+          authorization_number: doc.authorization_number || null,
+          authorized_at: doc.authorized_at || null,
+          error_message: doc.error_message || null
+        }).eq('id', id).then(({ error }) => {
+          if (error) console.warn('Supabase electronic doc status update error:', error);
+        });
+      }
+      this.notify();
     }
   }
 
-  // --- COLA DE CORREO Y AUTOMATIZACIONES ---
+  // --- CLIENTES EN SUPABASE ---
+  public createCustomer(custData: Omit<Customer, 'id' | 'created_at' | 'total_purchases_count' | 'total_spent'>): Customer {
+    const id = generateUUID();
+    const newCust: Customer = {
+      ...custData,
+      id,
+      total_purchases_count: 0,
+      total_spent: 0,
+      created_at: new Date().toISOString(),
+    };
+    this.data.customers.unshift(newCust);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('customers').insert({
+        id: newCust.id,
+        identification_type: newCust.identification_type,
+        identification_number: newCust.identification_number,
+        full_name: newCust.full_name,
+        email: newCust.email || null,
+        phone: newCust.phone || null,
+        address: newCust.address || null,
+        is_active: newCust.is_active ?? true,
+        total_purchases_count: 0,
+        total_spent: 0
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase customer insert error:', error);
+      });
+    }
+
+    this.notify();
+    return newCust;
+  }
+
+  // --- PROVEEDORES EN SUPABASE ---
+  public createSupplier(supplierData: Omit<Supplier, 'id' | 'created_at'>): Supplier {
+    const id = generateUUID();
+    const newSup: Supplier = {
+      ...supplierData,
+      id,
+      created_at: new Date().toISOString(),
+    };
+    this.data.suppliers.unshift(newSup);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('suppliers').insert({
+        id: newSup.id,
+        ruc: newSup.ruc,
+        business_name: newSup.business_name,
+        trade_name: newSup.trade_name || newSup.business_name,
+        address: newSup.address || null,
+        city: newSup.city || 'Quito',
+        phone: newSup.phone || null,
+        email: newSup.email || null,
+        payment_terms_days: newSup.payment_terms_days || 15,
+        is_active: newSup.is_active ?? true
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase supplier insert error:', error);
+      });
+    }
+
+    this.notify();
+    return newSup;
+  }
+
+  // --- ÓRDENES DE COMPRA EN SUPABASE ---
+  public createPurchaseOrder(poData: Omit<PurchaseOrder, 'id' | 'created_at'>): PurchaseOrder {
+    const id = generateUUID();
+    const newPo: PurchaseOrder = {
+      ...poData,
+      id,
+      created_at: new Date().toISOString(),
+    };
+    this.data.purchaseOrders.unshift(newPo);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('purchase_orders').insert({
+        id: newPo.id,
+        order_number: newPo.order_number,
+        supplier_id: newPo.supplier_id,
+        supplier_name: newPo.supplier_name || 'Proveedor',
+        created_by: newPo.created_by && newPo.created_by.length > 20 ? newPo.created_by : 'd0000000-0000-0000-0000-000000000001',
+        status: newPo.status || 'borrador',
+        expected_date: newPo.expected_date || null,
+        subtotal: newPo.subtotal,
+        tax_amount: newPo.tax_amount,
+        total_amount: newPo.total_amount,
+        notes: newPo.notes || null
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase purchase order insert error:', error);
+      });
+    }
+
+    this.notify();
+    return newPo;
+  }
+
+  // --- COLA DE CORREO Y NOTIFICACIONES ---
   public enqueueEmail(
     recipient: string,
     subject: string,
@@ -1637,7 +2115,7 @@ class DatabaseEngine {
     docId?: string
   ): EmailQueueItem {
     const email: EmailQueueItem = {
-      id: `em-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: generateUUID(),
       recipient,
       subject,
       body_html: bodyHtml,
@@ -1649,7 +2127,7 @@ class DatabaseEngine {
       created_at: new Date().toISOString(),
     };
     this.data.emailQueue.unshift(email);
-    this.persist();
+    this.notify();
     return email;
   }
 
@@ -1660,7 +2138,7 @@ class DatabaseEngine {
       email.status = 'enviado';
       email.sent_at = new Date().toISOString();
       email.last_error = undefined;
-      this.persist();
+      this.notify();
     }
   }
 
@@ -1668,15 +2146,37 @@ class DatabaseEngine {
     const notif = this.data.notifications.find((n) => n.id === id);
     if (notif) {
       notif.is_read = true;
-      this.persist();
+      this.notify();
     }
   }
 
   public updateSettings(newSettings: Partial<SystemSettings>, userId: string, userName: string) {
     const prev = { ...this.data.settings };
     this.data.settings = { ...this.data.settings, ...newSettings };
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('system_settings').update({
+        store_name: this.data.settings.store_name,
+        trade_name: this.data.settings.trade_name,
+        ruc: this.data.settings.ruc,
+        address: this.data.settings.address,
+        phone: this.data.settings.phone,
+        email: this.data.settings.email,
+        establishment_code: this.data.settings.establishment_code,
+        emission_point_code: this.data.settings.emission_point_code,
+        default_iva_rate: this.data.settings.default_iva_rate,
+        allow_negative_stock: this.data.settings.allow_negative_stock,
+        require_supervisor_for_discount: this.data.settings.require_supervisor_for_discount,
+        max_cashier_discount: this.data.settings.max_cashier_discount,
+        logo_url: this.data.settings.logo_url,
+        updated_at: new Date().toISOString()
+      }).eq('ruc', this.data.settings.ruc).then(({ error }) => {
+        if (error) console.warn('Supabase settings update error:', error);
+      });
+    }
+
     this.addAuditLog(userId, userName, 'ACTUALIZACION_CONFIGURACION', 'Configuración General', 'SISTEMA', 'Actualización de parámetros generales de la tienda', prev, this.data.settings);
-    this.persist();
+    this.notify();
   }
 }
 
