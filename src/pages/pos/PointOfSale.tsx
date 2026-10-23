@@ -35,7 +35,7 @@ interface CartItem {
 }
 
 export const PointOfSale: React.FC = () => {
-  const { products, customers, cashSessions, processSale } = useStore();
+  const { products, customers, cashSessions, processSale, createCustomer } = useStore();
   const { user, hasPermission } = useAuth();
 
   const [barcodeQuery, setBarcodeQuery] = useState('');
@@ -59,8 +59,62 @@ export const PointOfSale: React.FC = () => {
   const [newCustName, setNewCustName] = useState('');
   const [newCustEmail, setNewCustEmail] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustAddress, setNewCustAddress] = useState('');
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCreateQuickCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanId = newCustId.trim();
+    const cleanName = newCustName.trim().toUpperCase();
+
+    if (!cleanId) {
+      toast.error('Ingrese el número de Cédula o RUC del cliente');
+      return;
+    }
+    if (!cleanName) {
+      toast.error('Ingrese los nombres o razón social del cliente');
+      return;
+    }
+
+    if (newCustType === 'cedula' && cleanId.length !== 10) {
+      toast.error('La cédula ecuatoriana debe tener 10 dígitos numéricos');
+      return;
+    }
+    if (newCustType === 'ruc' && cleanId.length !== 13) {
+      toast.error('El RUC ecuatoriano debe tener 13 dígitos numéricos');
+      return;
+    }
+
+    try {
+      setIsSavingCustomer(true);
+      const created = await createCustomer({
+        identification_type: newCustType,
+        identification_number: cleanId,
+        full_name: cleanName,
+        email: newCustEmail.trim() || undefined,
+        phone: newCustPhone.trim() || undefined,
+        address: newCustAddress.trim() || 'Ecuador',
+      });
+
+      toast.success(`Cliente ${cleanName} registrado y seleccionado`);
+      if (created && created.id) {
+        setSelectedCustomerId(created.id);
+      }
+      // Limpiar formulario y cerrar modal
+      setNewCustId('');
+      setNewCustName('');
+      setNewCustEmail('');
+      setNewCustPhone('');
+      setNewCustAddress('');
+      setIsNewCustomerModalOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al registrar nuevo cliente');
+    } finally {
+      setIsSavingCustomer(false);
+    }
+  };
 
   // Encontrar sesión de caja activa del cajero
   const activeSession = cashSessions.find((s) => s.status === 'abierta');
@@ -579,6 +633,116 @@ export const PointOfSale: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      {/* Modal de Registro Rápido de Cliente */}
+      <Modal
+        isOpen={isNewCustomerModalOpen}
+        onClose={() => setIsNewCustomerModalOpen(false)}
+        title="Registrar Nuevo Cliente en POS"
+      >
+        <form onSubmit={handleCreateQuickCustomer} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Tipo de Identificación *
+              </label>
+              <select
+                value={newCustType}
+                onChange={(e) => setNewCustType(e.target.value as 'cedula' | 'ruc')}
+                className="input-field"
+              >
+                <option value="cedula">Cédula de Identidad (10 dígitos)</option>
+                <option value="ruc">RUC Comercial (13 dígitos)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Número de {newCustType === 'cedula' ? 'Cédula' : 'RUC'} *
+              </label>
+              <input
+                type="text"
+                autoFocus
+                maxLength={newCustType === 'cedula' ? 10 : 13}
+                placeholder={newCustType === 'cedula' ? 'Ej: 1723456789' : 'Ej: 1723456789001'}
+                value={newCustId}
+                onChange={(e) => setNewCustId(e.target.value.replace(/\D/g, ''))}
+                className="input-field font-mono"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Nombre Completo / Razón Social *
+            </label>
+            <input
+              type="text"
+              placeholder="Ej: Juan Carlos Pérez o Corporación La Favorita C.A."
+              value={newCustName}
+              onChange={(e) => setNewCustName(e.target.value)}
+              className="input-field uppercase"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Teléfono / Celular
+              </label>
+              <input
+                type="tel"
+                placeholder="Ej: 0991234567"
+                value={newCustPhone}
+                onChange={(e) => setNewCustPhone(e.target.value)}
+                className="input-field"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Correo Electrónico (Para Factura SRI)
+              </label>
+              <input
+                type="email"
+                placeholder="cliente@ejemplo.com"
+                value={newCustEmail}
+                onChange={(e) => setNewCustEmail(e.target.value)}
+                className="input-field"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Dirección Domiciliaria / Comercial
+            </label>
+            <input
+              type="text"
+              placeholder="Ej: Av. Amazonas y República, Quito"
+              value={newCustAddress}
+              onChange={(e) => setNewCustAddress(e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsNewCustomerModalOpen(false)}
+              disabled={isSavingCustomer}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isSavingCustomer}>
+              {isSavingCustomer ? 'Guardando en Supabase...' : 'Guardar y Asignar al Ticket'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
       {/* Barra flotante inferior en móvil cuando se está en catálogo y hay items */}
       {mobileTab === 'catalog' && totalCartItems > 0 && (
         <div className="fixed bottom-3 inset-x-3 z-30 lg:hidden animate-slide-up">

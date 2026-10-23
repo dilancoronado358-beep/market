@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { Camera, X, RefreshCw, Volume2, VolumeX, Flashlight, CheckCircle2 } from 'lucide-react';
+import { Camera, X, RefreshCw, Volume2, VolumeX, Flashlight, CheckCircle2, Image as ImageIcon, Upload } from 'lucide-react';
 import { Button } from './Button';
 import { toast } from 'sonner';
 
@@ -116,22 +116,44 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         await stopCamera();
       }
 
-      const scanner = new Html5Qrcode(containerId.current);
+      // CRÍTICO: Html5Qrcode REQUIERE formatsToSupport y useBarCodeDetectorIfSupported en el constructor
+      const formatsToSupport = [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.CODABAR,
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
+      ];
+
+      const scanner = new Html5Qrcode(containerId.current, {
+        formatsToSupport,
+        verbose: false,
+        useBarCodeDetectorIfSupported: true,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true,
+        },
+      });
       scannerRef.current = scanner;
 
       const config = {
-        fps: 15,
-        qrbox: { width: 280, height: 160 },
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.ITF,
-        ],
+        fps: 20, // Mayor frecuencia de escaneo para detectar rápidamente
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          // Relación de aspecto apaisada para códigos de barra (EAN-13, etc.)
+          const width = Math.min(Math.floor(viewfinderWidth * 0.88), 440);
+          const height = Math.min(Math.floor(viewfinderHeight * 0.55), 220);
+          return { width, height };
+        },
+        aspectRatio: 1.777778,
+        videoConstraints: {
+          facingMode: { ideal: 'environment' },
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 },
+        },
       };
 
       await scanner.start(
@@ -141,7 +163,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           handleSuccessfulScan(decodedText);
         },
         () => {
-          // Ignorar frames no decodificados
+          // Ignorar frames no decodificados para no saturar la consola
         }
       );
 
@@ -208,6 +230,44 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     if (!manualCode.trim()) return;
     handleSuccessfulScan(manualCode.trim());
     setManualCode('');
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      toast.info('Analizando imagen del código de barras...');
+      // Si el scanner no está activo, creamos una instancia rápida para decodificar la imagen
+      let scanner = scannerRef.current;
+      if (!scanner) {
+        scanner = new Html5Qrcode(containerId.current, {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.ITF,
+          ],
+          verbose: false,
+          useBarCodeDetectorIfSupported: true,
+        });
+      }
+
+      const decodedText = await scanner.scanFile(file, true);
+      if (decodedText) {
+        handleSuccessfulScan(decodedText);
+      } else {
+        toast.error('No se pudo identificar un código de barras nítido en la imagen.');
+      }
+    } catch {
+      toast.error('No se detectó un código de barras legible en la imagen. Intenta con más luz o ingresa el código numérico.');
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleCameraChange = async (newId: string) => {
@@ -397,10 +457,24 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex items-center justify-between text-xs">
-          <span className="text-[11px] text-slate-500">
-            {continuous ? 'Modo continuo: Sigue escaneando sin cerrar la ventana' : 'Al detectar el código se cerrará automáticamente'}
-          </span>
+        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-xs font-semibold shadow-sm">
+              <Upload className="w-3.5 h-3.5 text-brand-600" />
+              <span>Tomar Foto / Subir Imagen</span>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleImageFileChange}
+                className="hidden"
+              />
+            </label>
+            <span className="text-[11px] text-slate-500 hidden sm:inline">
+              {continuous ? 'Modo continuo activo' : 'Se cierra al detectar'}
+            </span>
+          </div>
+
           <Button
             size="sm"
             variant="secondary"
@@ -409,7 +483,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               onClose();
             }}
           >
-            Cerrar
+            Cerrar Lector
           </Button>
         </div>
       </div>
