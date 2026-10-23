@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Eye, EyeOff, Mail, Sparkles, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Loader2, FileText, ShieldCheck, Scale, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Modal } from '../../components/common/Modal';
@@ -32,7 +32,7 @@ const YoutubeIcon = () => (
 );
 
 export const Login: React.FC = () => {
-  const { login, resetPassword, allUsers } = useAuth();
+  const { login, resetPassword } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,6 +45,10 @@ export const Login: React.FC = () => {
   const [isResetOpen, setIsResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+
+  // Modal de Términos de Servicio y Política de Privacidad
+  const [isLegalOpen, setIsLegalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<'terms' | 'privacy'>('terms');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,12 +87,7 @@ export const Login: React.FC = () => {
     }
   };
 
-  // Autocompletar credenciales de prueba con un clic
-  const fillCredentials = (userEmail: string) => {
-    setEmail(userEmail);
-    setPassword('demo123456');
-    setErrorMessage('');
-  };
+
 
   return (
     <div
@@ -264,36 +263,59 @@ export const Login: React.FC = () => {
                 </button>
               </div>
 
-              {/* Aviso Legal de Términos de Servicio */}
-              <p className="text-[11px] text-white/75 leading-relaxed pt-2 drop-shadow">
-                Al hacer clic en &quot;Iniciar Sesión Ahora&quot; usted acepta nuestros{' '}
-                <a href="#terminos" className="underline text-white hover:text-orange-300">
-                  Términos de Servicio
-                </a>{' '}
-                |{' '}
-                <a href="#privacidad" className="underline text-white hover:text-orange-300">
-                  Política de Privacidad
-                </a>
-              </p>
-
-              {/* Panel de Acceso Rápido de Prueba (Demo 1 Clic) */}
-              <div className="pt-5 border-t border-white/20">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-white/90 mb-2 drop-shadow flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  Acceso Rápido de Prueba (1 Clic)
+              {/* Aviso Legal de Términos de Servicio y Privacidad */}
+              <div className="pt-2">
+                <p className="text-[11px] text-white/80 leading-relaxed drop-shadow">
+                  Al iniciar sesión, usted acepta nuestros{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalTab('terms');
+                      setIsLegalOpen(true);
+                    }}
+                    className="underline text-orange-300 hover:text-white font-medium transition-colors cursor-pointer"
+                  >
+                    Términos de Servicio
+                  </button>{' '}
+                  y nuestra{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLegalTab('privacy');
+                      setIsLegalOpen(true);
+                    }}
+                    className="underline text-orange-300 hover:text-white font-medium transition-colors cursor-pointer"
+                  >
+                    Política de Privacidad
+                  </button>
+                  .
                 </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {Array.from(new Map(allUsers.filter(u => u.is_active).map(u => [u.role, u])).values()).map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => fillCredentials(u.email)}
-                      className="px-2.5 py-1 rounded bg-black/45 hover:bg-black/65 border border-white/30 text-white text-[11px] font-medium backdrop-blur-sm transition-all hover:border-orange-400 capitalize cursor-pointer shadow-sm"
-                    >
-                      {u.role.replace(/_/g, ' ')}
-                    </button>
-                  ))}
-                </div>
+              </div>
+
+              {/* Botones de consulta legal y normativa */}
+              <div className="pt-4 border-t border-white/20 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/80">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLegalTab('terms');
+                    setIsLegalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/25 transition-all text-white cursor-pointer backdrop-blur-sm"
+                >
+                  <FileText className="w-3.5 h-3.5 text-orange-400" />
+                  <span>Términos de Servicio</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLegalTab('privacy');
+                    setIsLegalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/25 transition-all text-white cursor-pointer backdrop-blur-sm"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Política de Privacidad (LOPDP)</span>
+                </button>
               </div>
             </form>
           </div>
@@ -330,6 +352,189 @@ export const Login: React.FC = () => {
             placeholder="admin@erpposecuador.com"
             leftIcon={<Mail className="w-4 h-4" />}
           />
+        </div>
+      </Modal>
+
+      {/* Modal de Información Legal: Términos de Servicio y Política de Privacidad */}
+      <Modal
+        isOpen={isLegalOpen}
+        onClose={() => setIsLegalOpen(false)}
+        title={legalTab === 'terms' ? 'Términos y Condiciones de Servicio' : 'Política de Privacidad y Tratamiento de Datos'}
+        subtitle="ERP / POS Ecuador — Marco Legal Comercial, Facturación Electrónica SRI y LOPDP"
+        maxWidth="md"
+        footer={
+          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 text-center sm:text-left">
+              Vigencia 2026 • República del Ecuador • SRI & LOPDP
+            </span>
+            <Button variant="primary" onClick={() => setIsLegalOpen(false)}>
+              <CheckCircle2 className="w-4 h-4 mr-1.5" />
+              Entendido y Conforme
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {/* Navegación por Pestañas */}
+          <div className="flex border-b border-slate-200 dark:border-slate-700 gap-2 pb-1">
+            <button
+              type="button"
+              onClick={() => setLegalTab('terms')}
+              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                legalTab === 'terms'
+                  ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Términos de Servicio
+            </button>
+            <button
+              type="button"
+              onClick={() => setLegalTab('privacy')}
+              className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                legalTab === 'privacy'
+                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Política de Privacidad (LOPDP)
+            </button>
+          </div>
+
+          {/* Contenido: Términos de Servicio */}
+          {legalTab === 'terms' && (
+            <div className="space-y-4 text-xs text-slate-700 dark:text-slate-300 leading-relaxed pr-1">
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg flex items-start gap-2.5">
+                <Scale className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-900 dark:text-amber-200">
+                  El uso de este sistema está reservado exclusivamente para personal autorizado de la empresa o establecimiento comercial registrado bajo las regulaciones fiscales del Servicio de Rentas Internas (SRI) del Ecuador.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5 flex items-center gap-1.5">
+                  1. Objeto y Alcance del Software
+                </h4>
+                <p>
+                  ERP / POS Ecuador es un software empresarial especializado en la gestión de puntos de venta (POS), control de inventarios, movimientos de kardex, administración de compras, clientes, cierres de caja y emisión de comprobantes electrónicos autorizados por el SRI.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5 flex items-center gap-1.5">
+                  2. Responsabilidad sobre Facturación Electrónica SRI
+                </h4>
+                <ul className="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-400">
+                  <li>
+                    <strong>Validez de comprobantes:</strong> La exactitud de los datos emitidos (RUC, razón social, tarifas de IVA 15%, 5%, 0%, retenciones y subtotales) es de entera responsabilidad tributaria del emisor registrado.
+                  </li>
+                  <li>
+                    <strong>Custodia de Firma Electrónica (.p12):</strong> El usuario debe mantener en estricta reserva su clave de firma digital. El sistema la procesa de forma cifrada únicamente para autorizaciones ante el web service del SRI.
+                  </li>
+                  <li>
+                    <strong>Secuenciales y Establecimientos:</strong> Los códigos de punto de emisión y establecimiento configurados deben coincidir con los registrados en el RUC ante la autoridad tributaria.
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5 flex items-center gap-1.5">
+                  3. Obligaciones y Seguridad de Credenciales
+                </h4>
+                <p>
+                  Cada usuario registrado dispone de un perfil de acceso exclusivo y personal. Queda terminantemente prohibido ceder, transferir o compartir contraseñas de acceso. Toda transacción queda registrada con su respectivo identificador en el módulo de Auditoría del sistema.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5 flex items-center gap-1.5">
+                  4. Conservación de Registros y Auditoría
+                </h4>
+                <p>
+                  Conforme al Código Tributario ecuatoriano, las facturas electrónicas, notas de crédito, retenciones y reportes de cierre de caja generados deben ser respaldados por un período mínimo de 7 años. El sistema provee herramientas de respaldo y exportación de archivos XML y RIDE autorizados.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5 flex items-center gap-1.5">
+                  5. Jurisdicción y Legislación Aplicable
+                </h4>
+                <p>
+                  Las presentes condiciones se rigen e interpretan de acuerdo con las leyes vigentes de la República del Ecuador. Cualquier desacuerdo o litigio que surja del uso del software será sometido a los juzgados de lo civil y mercantil competentes del territorio ecuatoriano.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Contenido: Política de Privacidad */}
+          {legalTab === 'privacy' && (
+            <div className="space-y-4 text-xs text-slate-700 dark:text-slate-300 leading-relaxed pr-1">
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded-lg flex items-start gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-emerald-900 dark:text-emerald-200">
+                  Este sistema procesa información de acuerdo con la <strong>Ley Orgánica de Protección de Datos Personales (LOPDP)</strong> de la República del Ecuador, garantizando la seguridad, confidencialidad e integridad de la información comercial y tributaria.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5">
+                  1. Información Recopilada y Fuentes
+                </h4>
+                <p className="mb-1 text-slate-600 dark:text-slate-400">
+                  El sistema recopila únicamente los datos estrictamente indispensables para la operatividad comercial y contable:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-400">
+                  <li><strong>Datos de Usuarios:</strong> Nombre, correo electrónico, rol funcional, horario y registros de sesión.</li>
+                  <li><strong>Datos de Clientes y Proveedores:</strong> Cédula, RUC o Pasaporte, nombres o razón social, dirección, teléfono y correo electrónico para envío de facturas autorizadas (RIDE/XML).</li>
+                  <li><strong>Datos Transaccionales:</strong> Detalle de compras, ventas, cobros, formas de pago y arqueos de caja.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5">
+                  2. Finalidad del Tratamiento de Datos
+                </h4>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Los datos personales y comerciales se utilizan con los siguientes propósitos legítimos:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-600 dark:text-slate-400 mt-1">
+                  <li>Emisión y validación de comprobantes electrónicos ante los servidores del SRI.</li>
+                  <li>Despacho automatizado de comprobantes digitales a los correos de los compradores.</li>
+                  <li>Control interno de inventarios, márgenes comerciales y reportería financiera.</li>
+                  <li>Trazabilidad y prevención de fraudes mediante el registro de auditoría.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5">
+                  3. Medidas de Seguridad y Cifrado
+                </h4>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Toda la comunicación entre su navegador y los servidores se encuentra protegida con cifrado <strong>TLS 1.3 / HTTPS</strong> de 256 bits. Las contraseñas de usuarios están protegidas con algoritmos de hashing criptográfico unidireccional y las credenciales del SRI se almacenan en bóvedas seguras.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5">
+                  4. No Cesión a Terceros
+                </h4>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Bajo ninguna circunstancia los datos registrados en este ERP serán vendidos, alquilados ni transferidos a empresas de publicidad o intermediarios no autorizados. La información solo se comparte con entidades públicas cuando la ley ecuatoriana lo exija expresamente (como el SRI).
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-1.5">
+                  5. Derechos de los Titulares (Derechos ARCO)
+                </h4>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Conforme a los artículos 12 al 16 de la LOPDP, los titulares de los datos tienen derecho a solicitar el <strong>Acceso, Rectificación, Cancelación y Oposición</strong> de sus datos personales. Para ejercer estos derechos, puede dirigirse al oficial de datos de la empresa o escribir a: <span className="font-mono text-orange-600 dark:text-orange-400 font-semibold">privacidad@erpposecuador.com</span>.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
     </div>
