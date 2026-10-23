@@ -291,32 +291,6 @@ export const Login: React.FC = () => {
                   .
                 </p>
               </div>
-
-              {/* Botones de consulta legal y normativa */}
-              <div className="pt-4 border-t border-white/20 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/80">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLegalTab('terms');
-                    setIsLegalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/25 transition-all text-white cursor-pointer backdrop-blur-sm"
-                >
-                  <FileText className="w-3.5 h-3.5 text-orange-400" />
-                  <span>Términos de Servicio</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLegalTab('privacy');
-                    setIsLegalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/25 transition-all text-white cursor-pointer backdrop-blur-sm"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Política de Privacidad (LOPDP)</span>
-                </button>
-              </div>
             </form>
           </div>
         </div>
