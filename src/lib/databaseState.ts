@@ -480,7 +480,31 @@ class DatabaseEngine {
   }
 
   public getSnapshot(): DatabaseSnapshot {
-    return this.data;
+    return {
+      ...this.data,
+      products: [...this.data.products],
+      suppliers: [...this.data.suppliers],
+      customers: [...this.data.customers],
+      visits: [...this.data.visits],
+      visitItems: [...this.data.visitItems],
+      movements: [...this.data.movements],
+      sales: [...this.data.sales],
+      saleItems: [...this.data.saleItems],
+      categories: [...this.data.categories],
+      profiles: [...this.data.profiles],
+      cashSessions: [...this.data.cashSessions],
+      cashMovements: [...this.data.cashMovements],
+      electronicDocs: [...this.data.electronicDocs],
+      internalDocs: [...this.data.internalDocs],
+      purchaseOrders: [...this.data.purchaseOrders],
+      auditLogs: [...this.data.auditLogs],
+      incidents: [...this.data.incidents],
+      returns: [...this.data.returns],
+      exchanges: [...this.data.exchanges],
+      replacements: [...this.data.replacements],
+      emailQueue: [...this.data.emailQueue],
+      notifications: [...this.data.notifications],
+    };
   }
 
   public persistState() {
@@ -702,7 +726,7 @@ class DatabaseEngine {
       }
     }
 
-    this.data.products.unshift(newProduct);
+    this.data.products = [newProduct, ...this.data.products];
 
     if (initialStock > 0) {
       await this.executeKardexMovement({
@@ -775,7 +799,7 @@ class DatabaseEngine {
       }
     }
 
-    this.data.products[idx] = updated;
+    this.data.products = this.data.products.map((p) => (p.id === id ? updated : p));
     this.addAuditLog(userId, userName, 'ACTUALIZACION_PRODUCTO', 'Catálogo Productos', updated.internal_code, auditReason, previous, updated);
     this.notify();
     return updated;
@@ -888,7 +912,10 @@ class DatabaseEngine {
       }).eq('id', product.id);
     }
 
-    this.data.movements.unshift(movement);
+    product.current_stock = newStock;
+    product.avg_cost = newAvgCost;
+    this.data.movements = [movement, ...this.data.movements];
+    this.data.products = [...this.data.products];
 
     if (newStock <= product.min_stock) {
       this.triggerLowStockNotification(product);
@@ -967,7 +994,7 @@ class DatabaseEngine {
       }
     }
 
-    this.data.visits.unshift(newVisit);
+    this.data.visits = [newVisit, ...this.data.visits];
     this.addAuditLog(userId, userName, 'REGISTRO_LLEGADA_VISITA', 'Visitas Proveedores', visitNumber, `Llegada de proveedor: ${newVisit.sales_rep_name}`, null, newVisit);
     this.notify();
     return newVisit;
@@ -1041,7 +1068,7 @@ class DatabaseEngine {
       }
     }
 
-    this.data.visitItems.unshift(newItem);
+    this.data.visitItems = [newItem, ...this.data.visitItems];
 
     if (itemData.acceptedQty > 0) {
       await this.executeKardexMovement({
@@ -1062,6 +1089,7 @@ class DatabaseEngine {
 
     if (itemData.rejectedQty > 0 && itemData.status === 'dañado') {
       product.quarantine_stock = (product.quarantine_stock || 0) + itemData.rejectedQty;
+      this.data.products = [...this.data.products];
       visit.has_incidents = true;
 
       await this.reportSupplierIncident({
@@ -1742,8 +1770,8 @@ class DatabaseEngine {
       }
     }
 
-    this.data.sales.unshift(newSale);
-    this.data.saleItems.push(...saleItems);
+    this.data.sales = [newSale, ...this.data.sales];
+    this.data.saleItems = [...saleItems, ...this.data.saleItems];
 
     for (const item of saleItems) {
       await this.executeKardexMovement({
@@ -2126,7 +2154,7 @@ class DatabaseEngine {
       }
     }
 
-    this.data.customers.unshift(newCust);
+    this.data.customers = [newCust, ...this.data.customers];
     this.notify();
     return newCust;
   }
@@ -2159,7 +2187,7 @@ class DatabaseEngine {
       }
     }
 
-    this.data.suppliers.unshift(newSup);
+    this.data.suppliers = [newSup, ...this.data.suppliers];
     this.notify();
     return newSup;
   }
@@ -2193,7 +2221,7 @@ class DatabaseEngine {
       }
     }
 
-    this.data.purchaseOrders.unshift(newPo);
+    this.data.purchaseOrders = [newPo, ...this.data.purchaseOrders];
     this.notify();
     return newPo;
   }

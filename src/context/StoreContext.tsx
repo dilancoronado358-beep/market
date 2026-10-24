@@ -105,6 +105,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createProduct: async (data, initialStock) => {
           try {
             const prod = await db.createProduct(data, initialStock, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Producto "${prod.name}" guardado exitosamente en Supabase.`);
             return prod;
           } catch (e: any) {
@@ -115,6 +116,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         updateProduct: async (id, updates, reason) => {
           try {
             const prod = await db.updateProduct(id, updates, currentUserId, currentUserName, reason);
+            setSnapshot(db.getSnapshot());
             toast.success(`Producto "${prod.name}" actualizado en Supabase.`);
             return prod;
           } catch (e: any) {
@@ -125,6 +127,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createSupplierVisit: async (data) => {
           try {
             const visit = await db.createSupplierVisit(data, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Visita ${visit.visit_number} registrada en Supabase.`);
             return visit;
           } catch (e: any) {
@@ -135,6 +138,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addVisitReceiptItem: async (visitId, itemData) => {
           try {
             const item = await db.addVisitReceiptItem(visitId, itemData, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Línea agregada a la recepción (${item.accepted_qty} aceptadas).`);
             return item;
           } catch (e: any) {
@@ -145,6 +149,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createProductFromVisit: async (visitId, productData, receiptData) => {
           try {
             const prod = await db.createProductFromVisit(visitId, productData, receiptData, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Producto nuevo "${prod.name}" creado e incorporado a la visita.`);
             return prod;
           } catch (e: any) {
@@ -155,6 +160,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         reportSupplierIncident: (data) => {
           try {
             const inc = db.reportSupplierIncident(data, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.warning(`Incidencia ${inc.incident_number} reportada.`);
             return inc;
           } catch (e: any) {
@@ -165,6 +171,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         registerSupplierReturn: (data) => {
           try {
             const ret = db.registerSupplierReturn(data, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Retiro ${ret.return_number} registrado (${data.confirmPhysicalExit ? 'Salida confirmada' : 'Segregado'}).`);
             return ret;
           } catch (e: any) {
@@ -175,6 +182,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         processSupplierExchange: (data) => {
           try {
             const exc = db.processSupplierExchange(data, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Cambio de producto ${exc.exchange_number} completado.`);
             return exc;
           } catch (e: any) {
@@ -185,6 +193,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createSupplierReplacement: (data) => {
           try {
             const rep = db.createSupplierReplacement(data, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.info(`Compromiso ${rep.replacement_number} agendado para ${rep.expected_delivery_date}.`);
             return rep;
           } catch (e: any) {
@@ -195,6 +204,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         fulfillSupplierReplacement: (repId, qty) => {
           try {
             const rep = db.fulfillSupplierReplacement(repId, qty, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Reposición ${rep.replacement_number}: ${qty} unidades recibidas e ingresadas a inventario.`);
             return rep;
           } catch (e: any) {
@@ -205,6 +215,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         closeSupplierVisit: (visitId, notes) => {
           try {
             const visit = db.closeSupplierVisit(visitId, notes, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Visita ${visit.visit_number} finalizada y acta digital generada.`);
             return visit;
           } catch (e: any) {
@@ -215,6 +226,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         processSale: async (data) => {
           try {
             const sale = await db.processSale(data, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Venta ${sale.sale_number} completada en Supabase ($${sale.total_amount.toFixed(2)}).`);
             return sale;
           } catch (e: any) {
@@ -225,6 +237,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         cancelSale: async (saleId, reason) => {
           try {
             const sale = await db.cancelSale(saleId, reason, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.warning(`Venta ${sale.sale_number} anulada e inventario revertido.`);
             return sale;
           } catch (e: any) {
@@ -235,6 +248,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         openCashSession: (registerCode, floatAmount, notes) => {
           try {
             const session = db.openCashSession(registerCode, floatAmount, notes, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Turno de caja ${session.session_number} abierto.`);
             return session;
           } catch (e: any) {
@@ -245,6 +259,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         registerCashMovement: (sessionId, type, amount, reason) => {
           try {
             const mov = db.registerCashMovement(sessionId, type, amount, reason, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.success(`Movimiento de caja registrado ($${amount.toFixed(2)}).`);
             return mov;
           } catch (e: any) {
@@ -255,6 +270,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         closeCashSession: (sessionId, counted, notes, supervisorId) => {
           try {
             const session = db.closeCashSession(sessionId, counted, notes, supervisorId, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
             toast.info(`Turno de caja ${session.session_number} cerrado. Diferencia: $${session.difference?.toFixed(2)}`);
             return session;
           } catch (e: any) {
@@ -264,27 +280,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         },
         registerElectronicDocument: (doc) => {
           db.registerElectronicDocument(doc, currentUserId, currentUserName);
+          setSnapshot(db.getSnapshot());
         },
         updateElectronicDocumentStatus: (id, status, authNum, errorMsg) => {
           db.updateElectronicDocumentStatus(id, status, authNum, errorMsg);
+          setSnapshot(db.getSnapshot());
         },
         enqueueEmail: (rec, subj, html, tpl, docId) => {
-          return db.enqueueEmail(rec, subj, html, tpl, docId);
+          const res = db.enqueueEmail(rec, subj, html, tpl, docId);
+          setSnapshot(db.getSnapshot());
+          return res;
         },
         retryEmail: (id) => {
           db.retryEmail(id);
+          setSnapshot(db.getSnapshot());
           toast.success('Correo reenviado con éxito.');
         },
         markNotificationAsRead: (id) => {
           db.markNotificationAsRead(id);
+          setSnapshot(db.getSnapshot());
         },
         updateSettings: (newSettings) => {
           db.updateSettings(newSettings, currentUserId, currentUserName);
+          setSnapshot(db.getSnapshot());
           toast.success('Configuración general actualizada.');
         },
         createCustomer: async (data) => {
           try {
             const cust = await db.createCustomer(data);
+            setSnapshot(db.getSnapshot());
             toast.success(`Cliente "${cust.full_name}" registrado en Supabase.`);
             return cust;
           } catch (e: any) {
@@ -295,6 +319,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createSupplier: async (data) => {
           try {
             const sup = await db.createSupplier(data);
+            setSnapshot(db.getSnapshot());
             toast.success(`Proveedor "${sup.trade_name || sup.business_name}" registrado en Supabase.`);
             return sup;
           } catch (e: any) {
@@ -305,6 +330,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         createPurchaseOrder: async (data) => {
           try {
             const po = await db.createPurchaseOrder(data);
+            setSnapshot(db.getSnapshot());
             toast.success(`Orden de compra "${po.order_number}" registrada en Supabase.`);
             return po;
           } catch (e: any) {
