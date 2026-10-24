@@ -109,12 +109,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <aside
         className={clsx(
           'fixed top-0 left-0 z-50 h-screen transition-transform lg:transition-all duration-300 bg-white dark:bg-navy-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-2xl lg:shadow-none',
-          isMobileOpen ? 'translate-x-0 w-72 max-w-[85vw]' : '-translate-x-full lg:translate-x-0',
+          isMobileOpen ? 'translate-x-0 w-80 max-w-[88vw]' : '-translate-x-full lg:translate-x-0',
           collapsed ? 'lg:w-20' : 'lg:w-64'
         )}
       >
-        {/* Brand Header */}
-        <div className="h-16 flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        {/* Brand Header con soporte para Notch de iPhone */}
+        <div className="min-h-16 pt-[env(safe-area-inset-top,0px)] flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <img
               src="https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png"
@@ -139,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* Botón cerrar en móvil */}
           <button
             onClick={onCloseMobile}
-            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
             title="Cerrar menú"
           >
             <X className="w-5 h-5" />
@@ -159,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
       {/* Nav List */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
         {navGroups.map((group, gIdx) => {
           // Filtrar items según permisos
           const visibleItems = group.items.filter((item) => !item.permission || hasPermission(item.permission));

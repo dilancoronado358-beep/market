@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { GlobalSearch } from './GlobalSearch';
+import { MobileBottomNav } from './MobileBottomNav';
 import { clsx } from 'clsx';
 
 interface AppShellProps {
@@ -44,10 +45,18 @@ export const AppShell: React.FC<AppShellProps> = ({
           onToggleMobileMenu={() => setIsMobileOpen(!isMobileOpen)}
         />
 
-        <main className="flex-1 p-3 sm:p-5 lg:p-7 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-5 lg:p-7 overflow-y-auto pb-24 lg:pb-7">
           {children}
         </main>
       </div>
+
+      {/* Barra de navegación inferior móvil ergonómica para celulares (iOS / Android) */}
+      <MobileBottomNav
+        currentRoute={currentRoute}
+        onNavigate={onNavigate}
+        onOpenMobileMenu={() => setIsMobileOpen(!isMobileOpen)}
+        isMobileMenuOpen={isMobileOpen}
+      />
 
       {/* Modal de búsqueda global */}
       <GlobalSearch

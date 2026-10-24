@@ -15,6 +15,7 @@ import {
   ArrowUpRight,
   Sparkles,
   TrendingUp,
+  Wallet,
 } from 'lucide-react';
 import {
   BarChart,
@@ -107,7 +108,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 z-10">
+        <div className="flex flex-wrap items-center gap-2 z-10">
           <button
             onClick={() => onNavigate('pos')}
             className="btn-primary text-xs font-bold"
@@ -116,11 +117,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <span>Punto de Venta</span>
           </button>
           <button
+            onClick={() => onNavigate('productos')}
+            className="px-3.5 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all flex items-center gap-1.5"
+          >
+            <Boxes className="w-4 h-4" />
+            <span>Catálogo</span>
+          </button>
+          <button
+            onClick={() => onNavigate('caja')}
+            className="px-3.5 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all flex items-center gap-1.5"
+          >
+            <Wallet className="w-4 h-4" />
+            <span>Caja</span>
+          </button>
+          <button
             onClick={() => onNavigate('visitas')}
-            className="px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all flex items-center gap-2"
+            className="px-3.5 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all flex items-center gap-1.5"
           >
             <Truck className="w-4 h-4" />
-            <span>Expediente Visitas</span>
+            <span>Visitas</span>
           </button>
         </div>
       </div>

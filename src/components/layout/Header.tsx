@@ -68,14 +68,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
   const unreadNotifs = notifications.filter((n) => !n.is_read);
 
   return (
-    <header className="h-14 px-2.5 sm:px-6 bg-white dark:bg-[#0c1322] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors shadow-subtle overflow-x-hidden">
+    <header className="min-h-14 pt-[env(safe-area-inset-top,0px)] px-3 sm:px-6 bg-white dark:bg-[#0c1322] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors shadow-subtle overflow-x-hidden">
       {/* Botón menú móvil + Local / Sucursal y Búsqueda */}
       <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
         {/* Botón menú hamburguesa en móviles */}
         <button
           onClick={onToggleMobileMenu}
-          className="lg:hidden p-2 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors shrink-0 active:scale-95"
-          title="Abrir menú de navegación"
+          className="lg:hidden p-2.5 text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all shrink-0 active:scale-95 flex items-center justify-center border border-slate-200/80 dark:border-slate-700 shadow-xs"
+          title="Abrir menú de opciones"
         >
           <Menu className="w-5 h-5 text-slate-900 dark:text-white" />
         </button>
