@@ -24,12 +24,13 @@ import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const SuppliersList: React.FC = () => {
-  const { suppliers, visits, products, incidents, returns, replacements } = useStore();
+  const { suppliers, visits, products, incidents, returns, replacements, createSupplier } = useStore();
   const { hasPermission } = useAuth();
 
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [is360ModalOpen, setIs360ModalOpen] = useState(false);
   const [isNewSupplierModalOpen, setIsNewSupplierModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Formulario nuevo proveedor
   const [ruc, setRuc] = useState('');
@@ -41,7 +42,7 @@ export const SuppliersList: React.FC = () => {
   const [email, setEmail] = useState('');
   const [paymentTerms, setPaymentTerms] = useState(15);
 
-  const handleCreateSupplier = (e: React.FormEvent) => {
+  const handleCreateSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
     const idValidation = validateEcuadorianId(ruc);
     if (!idValidation.isValid && idValidation.type !== 'consumidor_final') {
@@ -49,28 +50,37 @@ export const SuppliersList: React.FC = () => {
       return;
     }
 
-    // Agregar a la base de datos de Supabase
-    const newSup = db.createSupplier({
-      ruc,
-      business_name: businessName,
-      trade_name: tradeName || businessName,
-      address,
-      city,
-      phone,
-      email,
-      payment_terms_days: paymentTerms,
-      lead_time_days: 2,
-      is_active: true,
-    });
+    setIsSubmitting(true);
+    try {
+      // Guardar directamente en la base de datos de Supabase
+      await createSupplier({
+        ruc,
+        business_name: businessName,
+        trade_name: tradeName || businessName,
+        address,
+        city,
+        phone,
+        email,
+        payment_terms_days: paymentTerms,
+        lead_time_days: 2,
+        is_active: true,
+      });
 
-    toast.success(`Proveedor "${newSup.trade_name}" registrado.`);
-    setIsNewSupplierModalOpen(false);
-    // Reset
-    setRuc('');
-    setBusinessName('');
-    setTradeName('');
-    setAddress('');
+      setIsNewSupplierModalOpen(false);
+      // Reset
+      setRuc('');
+      setBusinessName('');
+      setTradeName('');
+      setAddress('');
+      setPhone('');
+      setEmail('');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
 
   const columns: Column<Supplier>[] = [
     {
@@ -304,11 +314,11 @@ export const SuppliersList: React.FC = () => {
         maxWidth="2xl"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setIsNewSupplierModalOpen(false)}>
+            <Button variant="secondary" onClick={() => setIsNewSupplierModalOpen(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateSupplier}>
-              Registrar Proveedor Autorizado
+            <Button onClick={handleCreateSupplier} disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando en Supabase...' : 'Registrar Proveedor Autorizado'}
             </Button>
           </>
         }

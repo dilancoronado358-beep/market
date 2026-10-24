@@ -12,9 +12,10 @@ import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const CustomersList: React.FC = () => {
-  const { customers } = useStore();
+  const { customers, createCustomer } = useStore();
 
   const [isNewCustModalOpen, setIsNewCustModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [idType, setIdType] = useState<'cedula' | 'ruc' | 'pasaporte' | 'consumidor_final'>('cedula');
   const [idNumber, setIdNumber] = useState('');
   const [fullName, setFullName] = useState('');
@@ -22,7 +23,7 @@ export const CustomersList: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
 
-  const handleCreateCustomer = (e: React.FormEvent) => {
+  const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (idType === 'cedula' || idType === 'ruc') {
       const val = validateEcuadorianId(idNumber);
@@ -32,25 +33,32 @@ export const CustomersList: React.FC = () => {
       }
     }
 
-    db.createCustomer({
-      identification_type: idType,
-      identification_number: idNumber,
-      full_name: fullName,
-      email: email || undefined,
-      phone: phone || undefined,
-      address: address || undefined,
-      is_active: true,
-    });
+    setIsSubmitting(true);
+    try {
+      await createCustomer({
+        identification_type: idType,
+        identification_number: idNumber,
+        full_name: fullName,
+        email: email || undefined,
+        phone: phone || undefined,
+        address: address || undefined,
+        is_active: true,
+      });
 
-    toast.success(`Cliente "${fullName}" registrado exitosamente.`);
-    setIsNewCustModalOpen(false);
-    // Reset
-    setIdNumber('');
-    setFullName('');
-    setEmail('');
-    setPhone('');
-    setAddress('');
+      setIsNewCustModalOpen(false);
+      // Reset
+      setIdNumber('');
+      setFullName('');
+      setEmail('');
+      setPhone('');
+      setAddress('');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
 
   const columns: Column<Customer>[] = [
     {
@@ -183,11 +191,11 @@ export const CustomersList: React.FC = () => {
         maxWidth="2xl"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setIsNewCustModalOpen(false)}>
+            <Button variant="secondary" onClick={() => setIsNewCustModalOpen(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateCustomer}>
-              Guardar Cliente
+            <Button onClick={handleCreateCustomer} disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando en Supabase...' : 'Guardar Cliente'}
             </Button>
           </>
         }

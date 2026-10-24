@@ -10,6 +10,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    host: true, // Permite abrir la app desde celulares y otros dispositivos en la red
+    port: 5173,
+  },
+
   // @ts-ignore vitest config
   test: {
     globals: true,

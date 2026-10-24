@@ -89,7 +89,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     }
   }, [productToEdit, isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!internalCode || !name) {
@@ -103,60 +105,66 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       return;
     }
 
-    if (productToEdit) {
-      updateProduct(
-        productToEdit.id,
-        {
-          internal_code: internalCode,
-          sku: sku || undefined,
-          barcode: barcode || undefined,
-          name,
-          description,
-          category_id: categoryId || undefined,
-          brand,
-          unit_of_measure: unitOfMeasure,
-          unit_purchase: unitPurchase,
-          unit_conversion_ratio: unitConversion,
-          cost_price: costPrice,
-          sale_price: salePrice,
-          wholesale_price: wholesalePrice || undefined,
-          iva_rate: ivaRate,
-          min_stock: minStock,
-          max_stock: maxStock,
-          location,
-          main_supplier_id: supplierId || undefined,
-        },
-        auditReason
-      );
-    } else {
-      createProduct(
-        {
-          internal_code: internalCode,
-          sku: sku || undefined,
-          barcode: barcode || undefined,
-          name,
-          description,
-          category_id: categoryId || undefined,
-          brand,
-          unit_of_measure: unitOfMeasure,
-          unit_purchase: unitPurchase,
-          unit_conversion_ratio: unitConversion,
-          cost_price: costPrice,
-          avg_cost: costPrice,
-          sale_price: salePrice,
-          wholesale_price: wholesalePrice || undefined,
-          iva_rate: ivaRate,
-          min_stock: minStock,
-          max_stock: maxStock,
-          location,
-          main_supplier_id: supplierId || undefined,
-          is_active: true,
-        },
-        initialStock
-      );
+    setIsSubmitting(true);
+    try {
+      if (productToEdit) {
+        await updateProduct(
+          productToEdit.id,
+          {
+            internal_code: internalCode,
+            sku: sku || undefined,
+            barcode: barcode || undefined,
+            name,
+            description,
+            category_id: categoryId || undefined,
+            brand,
+            unit_of_measure: unitOfMeasure,
+            unit_purchase: unitPurchase,
+            unit_conversion_ratio: unitConversion,
+            cost_price: costPrice,
+            sale_price: salePrice,
+            wholesale_price: wholesalePrice || undefined,
+            iva_rate: ivaRate,
+            min_stock: minStock,
+            max_stock: maxStock,
+            location,
+            main_supplier_id: supplierId || undefined,
+          },
+          auditReason
+        );
+      } else {
+        await createProduct(
+          {
+            internal_code: internalCode,
+            sku: sku || undefined,
+            barcode: barcode || undefined,
+            name,
+            description,
+            category_id: categoryId || undefined,
+            brand,
+            unit_of_measure: unitOfMeasure,
+            unit_purchase: unitPurchase,
+            unit_conversion_ratio: unitConversion,
+            cost_price: costPrice,
+            avg_cost: costPrice,
+            sale_price: salePrice,
+            wholesale_price: wholesalePrice || undefined,
+            iva_rate: ivaRate,
+            min_stock: minStock,
+            max_stock: maxStock,
+            location,
+            main_supplier_id: supplierId || undefined,
+            is_active: true,
+          },
+          initialStock
+        );
+      }
+      onClose();
+    } catch (err: any) {
+      console.error('Error al guardar en Supabase:', err);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    onClose();
   };
 
   const marginPct = salePrice > 0 ? (((salePrice - costPrice) / salePrice) * 100).toFixed(1) : '0.0';
@@ -168,19 +176,24 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={productToEdit ? `Ficha Técnica: ${productToEdit.name}` : 'Registro de Nuevo Artículo en Catálogo'}
-      subtitle={productToEdit ? `Código Interno: ${productToEdit.internal_code}` : 'Los saldos y existencias físicas se gestionan de forma inmutable mediante movimientos de Kardex'}
+      subtitle={productToEdit ? `Código Interno: ${productToEdit.internal_code}` : 'Guardado directo en base de datos Supabase con Kardex atómico'}
       maxWidth="2xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit}>
-            {productToEdit ? 'Guardar Modificación' : 'Registrar Artículo en Catálogo'}
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting
+              ? 'Guardando en Supabase...'
+              : productToEdit
+              ? 'Guardar Modificación'
+              : 'Registrar Artículo en Catálogo'}
           </Button>
         </>
       }
     >
+
       <form onSubmit={handleSubmit} className="space-y-4 py-1 text-xs">
         {/* Sección 1: Identificación & Clasificación */}
         <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">

@@ -149,6 +149,7 @@ export interface Product {
   description?: string;
   category_id?: string;
   brand?: string;
+  model_presentation?: string;
   unit_of_measure: string;
   unit_purchase: string;
   unit_conversion_ratio: number;

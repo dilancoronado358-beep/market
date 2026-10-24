@@ -1,6 +1,6 @@
 // ==============================================================================
 // CONTEXTO REACTIVO GENERAL DEL NEGOCIO (STORE CONTEXT)
-// Sincroniza todos los módulos con el motor de base de datos en tiempo real
+// Sincroniza todos los módulos con el motor de base de datos en tiempo real (Supabase PostgreSQL)
 // ==============================================================================
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -9,21 +9,22 @@ import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 
 interface StoreContextType extends DatabaseSnapshot {
-  refresh: () => void;
-  // Métodos de negocio
-  createProduct: (data: any, initialStock: number) => any;
-  updateProduct: (id: string, updates: any, reason: string) => any;
-  createSupplierVisit: (data: any) => any;
-  addVisitReceiptItem: (visitId: string, itemData: any) => any;
-  createProductFromVisit: (visitId: string, productData: any, receiptData: any) => any;
+  isStoreLoading: boolean;
+  refresh: () => Promise<void>;
+  // Métodos de negocio asíncronos con persistencia directa en Supabase
+  createProduct: (data: any, initialStock: number) => Promise<any>;
+  updateProduct: (id: string, updates: any, reason: string) => Promise<any>;
+  createSupplierVisit: (data: any) => Promise<any>;
+  addVisitReceiptItem: (visitId: string, itemData: any) => Promise<any>;
+  createProductFromVisit: (visitId: string, productData: any, receiptData: any) => Promise<any>;
   reportSupplierIncident: (data: any) => any;
   registerSupplierReturn: (data: any) => any;
   processSupplierExchange: (data: any) => any;
   createSupplierReplacement: (data: any) => any;
   fulfillSupplierReplacement: (replacementId: string, qtyDelivered: number) => any;
   closeSupplierVisit: (visitId: string, notes: string) => any;
-  processSale: (data: any) => any;
-  cancelSale: (saleId: string, reason: string) => any;
+  processSale: (data: any) => Promise<any>;
+  cancelSale: (saleId: string, reason: string) => Promise<any>;
   openCashSession: (registerCode: string, openingFloat: number, notes: string) => any;
   registerCashMovement: (sessionId: string, type: any, amount: number, reason: string) => any;
   closeCashSession: (sessionId: string, actualCountedCash: number, notes: string, supervisorId: string) => any;
@@ -33,26 +34,63 @@ interface StoreContextType extends DatabaseSnapshot {
   retryEmail: (id: string) => any;
   markNotificationAsRead: (id: string) => any;
   updateSettings: (newSettings: any) => any;
-  createCustomer: (data: any) => any;
-  createSupplier: (data: any) => any;
-  createPurchaseOrder: (data: any) => any;
+  createCustomer: (data: any) => Promise<any>;
+  createSupplier: (data: any) => Promise<any>;
+  createPurchaseOrder: (data: any) => Promise<any>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [snapshot, setSnapshot] = useState<DatabaseSnapshot>(db.getSnapshot());
+  const [isStoreLoading, setIsStoreLoading] = useState<boolean>(!db.isInitialized);
   const { user } = useAuth();
 
   useEffect(() => {
+    let isMounted = true;
+
+    // 1. Suscribirse a cambios locales y en tiempo real
     const unsubscribe = db.subscribe(() => {
-      setSnapshot({ ...db.getSnapshot() });
+      if (isMounted) {
+        setSnapshot({ ...db.getSnapshot() });
+      }
     });
-    return () => unsubscribe();
+
+    // 2. Activar Realtime con Supabase (multi-dispositivo)
+    db.initRealtime();
+
+    // 3. Forzar sincronización completa con Supabase al montar el Provider
+    db.syncWithSupabase()
+      .then((liveData) => {
+        if (isMounted) {
+          setSnapshot({ ...liveData });
+          setIsStoreLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('Error en sincronización inicial con Supabase:', err);
+        if (isMounted) {
+          setIsStoreLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
-  const refresh = () => {
-    setSnapshot({ ...db.getSnapshot() });
+  const refresh = async () => {
+    setIsStoreLoading(true);
+    try {
+      const liveData = await db.syncWithSupabase();
+      setSnapshot({ ...liveData });
+      toast.success('Datos actualizados desde Supabase en la nube.');
+    } catch {
+      toast.error('Error al sincronizar con Supabase');
+    } finally {
+      setIsStoreLoading(false);
+    }
   };
 
   const currentUserId = user?.id || 'usr-system';
@@ -62,40 +100,41 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <StoreContext.Provider
       value={{
         ...snapshot,
+        isStoreLoading,
         refresh,
-        createProduct: (data, initialStock) => {
+        createProduct: async (data, initialStock) => {
           try {
-            const prod = db.createProduct(data, initialStock, currentUserId, currentUserName);
-            toast.success(`Producto "${prod.name}" registrado correctamente.`);
+            const prod = await db.createProduct(data, initialStock, currentUserId, currentUserName);
+            toast.success(`Producto "${prod.name}" guardado exitosamente en Supabase.`);
             return prod;
           } catch (e: any) {
-            toast.error(e.message || 'Error al crear producto');
+            toast.error(e.message || 'Error al guardar producto en Supabase');
             throw e;
           }
         },
-        updateProduct: (id, updates, reason) => {
+        updateProduct: async (id, updates, reason) => {
           try {
-            const prod = db.updateProduct(id, updates, currentUserId, currentUserName, reason);
-            toast.success(`Producto "${prod.name}" actualizado.`);
+            const prod = await db.updateProduct(id, updates, currentUserId, currentUserName, reason);
+            toast.success(`Producto "${prod.name}" actualizado en Supabase.`);
             return prod;
           } catch (e: any) {
-            toast.error(e.message || 'Error al actualizar producto');
+            toast.error(e.message || 'Error al actualizar producto en Supabase');
             throw e;
           }
         },
-        createSupplierVisit: (data) => {
+        createSupplierVisit: async (data) => {
           try {
-            const visit = db.createSupplierVisit(data, currentUserId, currentUserName);
-            toast.success(`Visita ${visit.visit_number} iniciada.`);
+            const visit = await db.createSupplierVisit(data, currentUserId, currentUserName);
+            toast.success(`Visita ${visit.visit_number} registrada en Supabase.`);
             return visit;
           } catch (e: any) {
-            toast.error(e.message || 'Error al iniciar visita');
+            toast.error(e.message || 'Error al registrar visita');
             throw e;
           }
         },
-        addVisitReceiptItem: (visitId, itemData) => {
+        addVisitReceiptItem: async (visitId, itemData) => {
           try {
-            const item = db.addVisitReceiptItem(visitId, itemData, currentUserId, currentUserName);
+            const item = await db.addVisitReceiptItem(visitId, itemData, currentUserId, currentUserName);
             toast.success(`Línea agregada a la recepción (${item.accepted_qty} aceptadas).`);
             return item;
           } catch (e: any) {
@@ -103,9 +142,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             throw e;
           }
         },
-        createProductFromVisit: (visitId, productData, receiptData) => {
+        createProductFromVisit: async (visitId, productData, receiptData) => {
           try {
-            const prod = db.createProductFromVisit(visitId, productData, receiptData, currentUserId, currentUserName);
+            const prod = await db.createProductFromVisit(visitId, productData, receiptData, currentUserId, currentUserName);
             toast.success(`Producto nuevo "${prod.name}" creado e incorporado a la visita.`);
             return prod;
           } catch (e: any) {
@@ -173,19 +212,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             throw e;
           }
         },
-        processSale: (data) => {
+        processSale: async (data) => {
           try {
-            const sale = db.processSale(data, currentUserId, currentUserName);
-            toast.success(`Venta ${sale.sale_number} completada ($${sale.total_amount.toFixed(2)}).`);
+            const sale = await db.processSale(data, currentUserId, currentUserName);
+            toast.success(`Venta ${sale.sale_number} completada en Supabase ($${sale.total_amount.toFixed(2)}).`);
             return sale;
           } catch (e: any) {
             toast.error(e.message || 'Error al procesar venta');
             throw e;
           }
         },
-        cancelSale: (saleId, reason) => {
+        cancelSale: async (saleId, reason) => {
           try {
-            const sale = db.cancelSale(saleId, reason, currentUserId, currentUserName);
+            const sale = await db.cancelSale(saleId, reason, currentUserId, currentUserName);
             toast.warning(`Venta ${sale.sale_number} anulada e inventario revertido.`);
             return sale;
           } catch (e: any) {
@@ -243,14 +282,35 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           db.updateSettings(newSettings, currentUserId, currentUserName);
           toast.success('Configuración general actualizada.');
         },
-        createCustomer: (data) => {
-          return db.createCustomer(data);
+        createCustomer: async (data) => {
+          try {
+            const cust = await db.createCustomer(data);
+            toast.success(`Cliente "${cust.full_name}" registrado en Supabase.`);
+            return cust;
+          } catch (e: any) {
+            toast.error(e.message || 'Error al registrar cliente');
+            throw e;
+          }
         },
-        createSupplier: (data) => {
-          return db.createSupplier(data);
+        createSupplier: async (data) => {
+          try {
+            const sup = await db.createSupplier(data);
+            toast.success(`Proveedor "${sup.trade_name || sup.business_name}" registrado en Supabase.`);
+            return sup;
+          } catch (e: any) {
+            toast.error(e.message || 'Error al registrar proveedor');
+            throw e;
+          }
         },
-        createPurchaseOrder: (data) => {
-          return db.createPurchaseOrder(data);
+        createPurchaseOrder: async (data) => {
+          try {
+            const po = await db.createPurchaseOrder(data);
+            toast.success(`Orden de compra "${po.order_number}" registrada en Supabase.`);
+            return po;
+          } catch (e: any) {
+            toast.error(e.message || 'Error al registrar orden de compra');
+            throw e;
+          }
         },
       }}
     >

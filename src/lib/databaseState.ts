@@ -233,11 +233,14 @@ export const initialData: DatabaseSnapshot = cleanZeroData;
 class DatabaseEngine {
   private data: DatabaseSnapshot;
   private listeners: (() => void)[] = [];
+  public isInitialized: boolean = false;
+  private realtimeChannel: any = null;
 
   constructor() {
     this.cleanLocalStorage();
     this.data = JSON.parse(JSON.stringify(cleanZeroData));
     this.syncWithSupabase();
+    this.initRealtime();
   }
 
   // Elimina cualquier rastro antiguo de localStorage
@@ -254,12 +257,40 @@ class DatabaseEngine {
     }
   }
 
+  // Escuchar cambios en vivo desde Supabase para sincronizar entre todos los dispositivos conectados
+  public initRealtime() {
+    if (!isSupabaseConfigured || !supabase || this.realtimeChannel) return;
+    try {
+      this.realtimeChannel = supabase
+        .channel('public-db-realtime-sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public' },
+          (payload) => {
+            console.log('Cambio en tiempo real detectado en Supabase:', payload);
+            this.syncWithSupabase();
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Conexión en tiempo real activa con Supabase (multi-dispositivo).');
+          }
+        });
+    } catch (e) {
+      console.warn('Realtime subscription warning:', e);
+    }
+  }
+
   // Sincronización completa con Supabase PostgreSQL
-  public async syncWithSupabase() {
-    if (!isSupabaseConfigured || !supabase) return;
+  public async syncWithSupabase(): Promise<DatabaseSnapshot> {
+    if (!isSupabaseConfigured || !supabase) {
+      this.isInitialized = true;
+      this.notify();
+      return this.data;
+    }
     try {
       const [
-        { data: prods },
+        { data: prods, error: prodsErr },
         { data: cats },
         { data: supps },
         { data: visits },
@@ -304,30 +335,34 @@ class DatabaseEngine {
         supabase.from('profiles').select('*').order('created_at', { ascending: true }),
       ]);
 
+      if (prodsErr) {
+        console.warn('Error fetching products from Supabase:', prodsErr);
+      }
+
       if (cats && cats.length > 0) this.data.categories = cats;
-      if (prods && prods.length > 0) this.data.products = prods;
-      if (supps && supps.length > 0) this.data.suppliers = supps;
-      if (visits && visits.length > 0) this.data.visits = visits;
-      if (visitItems && visitItems.length > 0) this.data.visitItems = visitItems;
-      if (incidents && incidents.length > 0) this.data.incidents = incidents;
-      if (returns && returns.length > 0) this.data.returns = returns;
-      if (exchanges && exchanges.length > 0) this.data.exchanges = exchanges;
-      if (replacements && replacements.length > 0) this.data.replacements = replacements;
-      if (movs && movs.length > 0) this.data.movements = movs;
-      if (custs && custs.length > 0) this.data.customers = custs;
-      if (sessions && sessions.length > 0) this.data.cashSessions = sessions;
-      if (cashMovs && cashMovs.length > 0) this.data.cashMovements = cashMovs;
-      if (salesData && salesData.length > 0) {
+      if (prods) this.data.products = prods;
+      if (supps) this.data.suppliers = supps;
+      if (visits) this.data.visits = visits;
+      if (visitItems) this.data.visitItems = visitItems;
+      if (incidents) this.data.incidents = incidents;
+      if (returns) this.data.returns = returns;
+      if (exchanges) this.data.exchanges = exchanges;
+      if (replacements) this.data.replacements = replacements;
+      if (movs) this.data.movements = movs;
+      if (custs) this.data.customers = custs;
+      if (sessions) this.data.cashSessions = sessions;
+      if (cashMovs) this.data.cashMovements = cashMovs;
+      if (salesData) {
         this.data.sales = salesData.map((s) => ({
           ...s,
           items: (saleItemsData || []).filter((i) => i.sale_id === s.id),
         }));
       }
-      if (saleItemsData && saleItemsData.length > 0) this.data.saleItems = saleItemsData;
-      if (electronicDocsData && electronicDocsData.length > 0) this.data.electronicDocs = electronicDocsData;
-      if (internalDocsData && internalDocsData.length > 0) this.data.internalDocs = internalDocsData;
-      if (purchaseOrdersData && purchaseOrdersData.length > 0) this.data.purchaseOrders = purchaseOrdersData;
-      if (auditLogsData && auditLogsData.length > 0) this.data.auditLogs = auditLogsData;
+      if (saleItemsData) this.data.saleItems = saleItemsData;
+      if (electronicDocsData) this.data.electronicDocs = electronicDocsData;
+      if (internalDocsData) this.data.internalDocs = internalDocsData;
+      if (purchaseOrdersData) this.data.purchaseOrders = purchaseOrdersData;
+      if (auditLogsData) this.data.auditLogs = auditLogsData;
       if (settingsData && settingsData.length > 0) {
         this.data.settings = { ...this.data.settings, ...settingsData[0] };
       }
@@ -335,11 +370,16 @@ class DatabaseEngine {
         this.data.profiles = profsData;
       }
 
+      this.isInitialized = true;
       this.notify();
     } catch (err) {
       console.warn('Supabase sync notice:', err);
+      this.isInitialized = true;
+      this.notify();
     }
+    return this.data;
   }
+
 
   public seedTestData() {
     if (this.data.products.length === 0) {
@@ -604,12 +644,12 @@ class DatabaseEngine {
   }
 
   // --- PRODUCTOS Y KARDEX ATÓMICO EN SUPABASE ---
-  public createProduct(
+  public async createProduct(
     productData: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'current_stock' | 'quarantine_stock' | 'reserved_stock'>,
     initialStock: number,
     userId: string,
     userName: string
-  ): Product {
+  ): Promise<Product> {
     const id = generateUUID();
     const newProduct: Product = {
       ...productData,
@@ -622,35 +662,45 @@ class DatabaseEngine {
       updated_at: new Date().toISOString(),
     };
 
-    this.data.products.unshift(newProduct);
-
     if (isSupabaseConfigured && supabase) {
-      supabase.from('products').insert({
+      const { error: insertErr } = await supabase.from('products').insert({
         id: newProduct.id,
         internal_code: newProduct.internal_code,
+        sku: newProduct.sku || null,
         barcode: newProduct.barcode || null,
         name: newProduct.name,
         description: newProduct.description || null,
         category_id: newProduct.category_id && newProduct.category_id.length > 20 ? newProduct.category_id : null,
+        brand: newProduct.brand || null,
+        model_presentation: newProduct.model_presentation || null,
         unit_of_measure: newProduct.unit_of_measure,
+        unit_purchase: newProduct.unit_purchase || 'unidad',
+        unit_conversion_ratio: newProduct.unit_conversion_ratio || 1,
         cost_price: newProduct.cost_price,
         avg_cost: newProduct.avg_cost,
         sale_price: newProduct.sale_price,
+        wholesale_price: newProduct.wholesale_price || 0,
         iva_rate: newProduct.iva_rate,
         min_stock: newProduct.min_stock,
         max_stock: newProduct.max_stock,
         current_stock: 0,
         reserved_stock: 0,
         quarantine_stock: 0,
+        location: newProduct.location || null,
         main_supplier_id: newProduct.main_supplier_id && newProduct.main_supplier_id.length > 20 ? newProduct.main_supplier_id : null,
         is_active: true
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase product insert error:', error);
       });
+
+      if (insertErr) {
+        console.error('Supabase product insert error:', insertErr);
+        throw new Error(`Error en Supabase al crear producto: ${insertErr.message}`);
+      }
     }
 
+    this.data.products.unshift(newProduct);
+
     if (initialStock > 0) {
-      this.executeKardexMovement({
+      await this.executeKardexMovement({
         productId: id,
         movementType: 'inventario_inicial',
         quantityIn: initialStock,
@@ -664,18 +714,18 @@ class DatabaseEngine {
       });
     }
 
-    this.addAuditLog(userId, userName, 'CREACION_PRODUCTO', 'Catálogo Productos', newProduct.internal_code, 'Nuevo producto registrado', null, newProduct);
+    this.addAuditLog(userId, userName, 'CREACION_PRODUCTO', 'Catálogo Productos', newProduct.internal_code, 'Nuevo producto registrado en Supabase', null, newProduct);
     this.notify();
-    return this.data.products.find((p) => p.id === id)!;
+    return newProduct;
   }
 
-  public updateProduct(
+  public async updateProduct(
     id: string,
     updates: Partial<Product>,
     userId: string,
     userName: string,
     auditReason: string
-  ): Product {
+  ): Promise<Product> {
     const idx = this.data.products.findIndex((p) => p.id === id);
     if (idx === -1) throw new Error('Producto no encontrado');
 
@@ -688,33 +738,46 @@ class DatabaseEngine {
 
     updated.current_stock = previous.current_stock;
     updated.quarantine_stock = previous.quarantine_stock;
-    this.data.products[idx] = updated;
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('products').update({
+      const { error } = await supabase.from('products').update({
         name: updated.name,
         internal_code: updated.internal_code,
+        sku: updated.sku || null,
         barcode: updated.barcode || null,
         description: updated.description || null,
+        brand: updated.brand || null,
+        model_presentation: updated.model_presentation || null,
+        unit_of_measure: updated.unit_of_measure,
+        unit_purchase: updated.unit_purchase,
+        unit_conversion_ratio: updated.unit_conversion_ratio,
         cost_price: updated.cost_price,
         sale_price: updated.sale_price,
+        wholesale_price: updated.wholesale_price || 0,
         iva_rate: updated.iva_rate,
         min_stock: updated.min_stock,
         max_stock: updated.max_stock,
-        is_active: updated.is_active,
+        location: updated.location || null,
+        category_id: updated.category_id && updated.category_id.length > 20 ? updated.category_id : null,
+        main_supplier_id: updated.main_supplier_id && updated.main_supplier_id.length > 20 ? updated.main_supplier_id : null,
+        is_active: updated.is_active ?? true,
         updated_at: updated.updated_at
-      }).eq('id', id).then(({ error }) => {
-        if (error) console.warn('Supabase product update error:', error);
-      });
+      }).eq('id', id);
+
+      if (error) {
+        console.error('Supabase product update error:', error);
+        throw new Error(`Error en Supabase al actualizar producto: ${error.message}`);
+      }
     }
 
+    this.data.products[idx] = updated;
     this.addAuditLog(userId, userName, 'ACTUALIZACION_PRODUCTO', 'Catálogo Productos', updated.internal_code, auditReason, previous, updated);
     this.notify();
     return updated;
   }
 
   // --- KARDEX INMUTABLE Y COSTO PROMEDIO EN SUPABASE ---
-  public executeKardexMovement(params: {
+  public async executeKardexMovement(params: {
     productId: string;
     movementType: import('../types/database').MovementType;
     quantityIn: number;
@@ -730,7 +793,7 @@ class DatabaseEngine {
     reason: string;
     isReversal?: boolean;
     reversalOfId?: string;
-  }): InventoryMovement {
+  }): Promise<InventoryMovement> {
     const product = this.data.products.find((p) => p.id === params.productId);
     if (!product) throw new Error(`Producto ${params.productId} no encontrado`);
 
@@ -786,10 +849,8 @@ class DatabaseEngine {
       created_at: new Date().toISOString(),
     };
 
-    this.data.movements.unshift(movement);
-
     if (isSupabaseConfigured && supabase) {
-      supabase.from('inventory_movements').insert({
+      const { error: movErr } = await supabase.from('inventory_movements').insert({
         id: movement.id,
         movement_number: movement.movement_number,
         product_id: movement.product_id,
@@ -809,18 +870,20 @@ class DatabaseEngine {
         user_name: movement.user_name || null,
         reason: movement.reason,
         is_reversal: movement.is_reversal
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase kardex insert error:', error);
       });
 
-      supabase.from('products').update({
+      if (movErr) {
+        console.warn('Supabase kardex insert error:', movErr);
+      }
+
+      await supabase.from('products').update({
         current_stock: newStock,
         avg_cost: newAvgCost,
         updated_at: new Date().toISOString()
-      }).eq('id', product.id).then(({ error }) => {
-        if (error) console.warn('Supabase product stock update error:', error);
-      });
+      }).eq('id', product.id);
     }
+
+    this.data.movements.unshift(movement);
 
     if (newStock <= product.min_stock) {
       this.triggerLowStockNotification(product);
@@ -829,6 +892,7 @@ class DatabaseEngine {
     this.notify();
     return movement;
   }
+
 
   private triggerLowStockNotification(product: Product) {
     const existing = this.data.notifications.find(
@@ -848,7 +912,7 @@ class DatabaseEngine {
   }
 
   // --- VISITAS DE PROVEEDORES (EXPEDIENTE DIGITAL) EN SUPABASE ---
-  public createSupplierVisit(
+  public async createSupplierVisit(
     visitData: {
       supplier_id: string;
       sales_rep_name: string;
@@ -858,7 +922,7 @@ class DatabaseEngine {
     },
     userId: string,
     userName: string
-  ): SupplierVisit {
+  ): Promise<SupplierVisit> {
     const visitCount = this.data.visits.length + 1;
     const visitNumber = `VIS-${new Date().getFullYear()}-${String(visitCount).padStart(4, '0')}`;
     const newVisit: SupplierVisit = {
@@ -878,10 +942,8 @@ class DatabaseEngine {
       updated_at: new Date().toISOString(),
     };
 
-    this.data.visits.unshift(newVisit);
-
     if (isSupabaseConfigured && supabase) {
-      supabase.from('supplier_visits').insert({
+      const { error: visitErr } = await supabase.from('supplier_visits').insert({
         id: newVisit.id,
         visit_number: newVisit.visit_number,
         supplier_id: newVisit.supplier_id,
@@ -893,17 +955,20 @@ class DatabaseEngine {
         notes: newVisit.notes || null,
         has_incidents: false,
         has_replacements_pending: false
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase visit insert error:', error);
       });
+      if (visitErr) {
+        console.error('Supabase visit insert error:', visitErr);
+        throw new Error(`Error en Supabase al registrar visita: ${visitErr.message}`);
+      }
     }
 
+    this.data.visits.unshift(newVisit);
     this.addAuditLog(userId, userName, 'REGISTRO_LLEGADA_VISITA', 'Visitas Proveedores', visitNumber, `Llegada de proveedor: ${newVisit.sales_rep_name}`, null, newVisit);
     this.notify();
     return newVisit;
   }
 
-  public addVisitReceiptItem(
+  public async addVisitReceiptItem(
     visitId: string,
     itemData: {
       productId: string;
@@ -921,7 +986,7 @@ class DatabaseEngine {
     },
     userId: string,
     userName: string
-  ): SupplierVisitItem {
+  ): Promise<SupplierVisitItem> {
     const visit = this.data.visits.find((v) => v.id === visitId);
     if (!visit) throw new Error('Visita no encontrada');
     const product = this.data.products.find((p) => p.id === itemData.productId);
@@ -947,31 +1012,34 @@ class DatabaseEngine {
       created_at: new Date().toISOString(),
     };
 
-    this.data.visitItems.unshift(newItem);
-
     if (isSupabaseConfigured && supabase) {
-      supabase.from('supplier_visit_items').insert({
+      const { error: itemErr } = await supabase.from('supplier_visit_items').insert({
         id: newItem.id,
         visit_id: newItem.visit_id,
         product_id: newItem.product_id,
-        product_name: newItem.product_name,
         declared_qty: newItem.declared_qty,
-        physical_qty: newItem.received_qty,
+        received_qty: newItem.received_qty,
         accepted_qty: newItem.accepted_qty,
         rejected_qty: newItem.rejected_qty,
+        unit: newItem.unit || 'unidad',
         unit_cost: newItem.unit_cost,
-        batch_number: newItem.lot_number || null,
+        lot_number: newItem.lot_number || null,
         expiration_date: newItem.expiration_date || null,
         status: newItem.status,
         difference_reason: newItem.difference_reason || null,
+        is_new_product: Boolean(newItem.is_new_product),
         notes: newItem.notes || null
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase visit item insert error:', error);
       });
+      if (itemErr) {
+        console.error('Supabase visit item insert error:', itemErr);
+        throw new Error(`Error en Supabase al registrar item de visita: ${itemErr.message}`);
+      }
     }
 
+    this.data.visitItems.unshift(newItem);
+
     if (itemData.acceptedQty > 0) {
-      this.executeKardexMovement({
+      await this.executeKardexMovement({
         productId: product.id,
         movementType: 'compra_recibida',
         quantityIn: itemData.acceptedQty,
@@ -991,7 +1059,7 @@ class DatabaseEngine {
       product.quarantine_stock = (product.quarantine_stock || 0) + itemData.rejectedQty;
       visit.has_incidents = true;
 
-      this.reportSupplierIncident({
+      await this.reportSupplierIncident({
         visit_id: visit.id,
         supplier_id: visit.supplier_id,
         product_id: product.id,
@@ -1005,12 +1073,20 @@ class DatabaseEngine {
     visit.status = visit.has_incidents ? 'con_incidencias' : 'en_recepcion';
     visit.updated_at = new Date().toISOString();
 
+    if (isSupabaseConfigured && supabase) {
+      await supabase.from('supplier_visits').update({
+        status: visit.status,
+        has_incidents: visit.has_incidents,
+        updated_at: visit.updated_at
+      }).eq('id', visit.id);
+    }
+
     this.addAuditLog(userId, userName, 'RECEPCION_LINEA_MERCADERIA', 'Visitas Proveedores', visit.visit_number, `Línea recibida: ${product.name}`, null, newItem);
     this.notify();
     return newItem;
   }
 
-  public createProductFromVisit(
+  public async createProductFromVisit(
     visitId: string,
     productData: {
       internal_code: string;
@@ -1033,11 +1109,11 @@ class DatabaseEngine {
     },
     userId: string,
     userName: string
-  ) {
+  ): Promise<Product> {
     const visit = this.data.visits.find((v) => v.id === visitId);
     if (!visit) throw new Error('Visita no encontrada');
 
-    const product = this.createProduct({
+    const product = await this.createProduct({
       ...productData,
       main_supplier_id: visit.supplier_id,
       unit_purchase: productData.unit_of_measure,
@@ -1048,7 +1124,7 @@ class DatabaseEngine {
       is_active: true,
     }, 0, userId, userName);
 
-    this.addVisitReceiptItem(visitId, {
+    await this.addVisitReceiptItem(visitId, {
       productId: product.id,
       declaredQty: receiptData.declaredQty,
       receivedQty: receiptData.declaredQty,
@@ -1064,6 +1140,7 @@ class DatabaseEngine {
 
     return product;
   }
+
 
   public reportSupplierIncident(
     params: {
@@ -1506,7 +1583,7 @@ class DatabaseEngine {
   }
 
   // --- PUNTO DE VENTA (POS) Y VENTAS EN SUPABASE ---
-  public processSale(
+  public async processSale(
     params: {
       customerId: string;
       sessionId?: string;
@@ -1517,7 +1594,7 @@ class DatabaseEngine {
     },
     userId: string,
     userName: string
-  ): Sale {
+  ): Promise<Sale> {
     const customer = this.data.customers.find(
       (c) => c.id === params.customerId || (params.customerId === 'cust-cf' && (c.id === 'cust-cf' || c.identification_type === 'consumidor_final'))
     ) || (params.customerId === 'cust-cf' ? this.data.customers[0] : null);
@@ -1611,11 +1688,8 @@ class DatabaseEngine {
       items: saleItems,
     };
 
-    this.data.sales.unshift(newSale);
-    this.data.saleItems.push(...saleItems);
-
     if (isSupabaseConfigured && supabase) {
-      supabase.from('sales').insert({
+      const { error: saleErr } = await supabase.from('sales').insert({
         id: newSale.id,
         sale_number: newSale.sale_number,
         customer_id: newSale.customer_id && newSale.customer_id.length > 20 ? newSale.customer_id : null,
@@ -1633,9 +1707,12 @@ class DatabaseEngine {
         change_given: newSale.change_given,
         status: 'completada',
         internal_doc_number: newSale.internal_doc_number
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase sale insert error:', error);
       });
+
+      if (saleErr) {
+        console.error('Supabase sale insert error:', saleErr);
+        throw new Error(`Error en Supabase al registrar venta: ${saleErr.message}`);
+      }
 
       const itemsToInsert = saleItems.map((si) => ({
         id: si.id,
@@ -1653,13 +1730,18 @@ class DatabaseEngine {
         iva_amount: si.iva_amount,
         total: si.total
       }));
-      supabase.from('sale_items').insert(itemsToInsert).then(({ error }) => {
-        if (error) console.warn('Supabase sale_items insert error:', error);
-      });
+
+      const { error: itemsErr } = await supabase.from('sale_items').insert(itemsToInsert);
+      if (itemsErr) {
+        console.warn('Supabase sale_items insert error:', itemsErr);
+      }
     }
 
+    this.data.sales.unshift(newSale);
+    this.data.saleItems.push(...saleItems);
+
     for (const item of saleItems) {
-      this.executeKardexMovement({
+      await this.executeKardexMovement({
         productId: item.product_id,
         movementType: 'venta',
         quantityIn: 0,
@@ -1688,20 +1770,19 @@ class DatabaseEngine {
         }
 
         if (isSupabaseConfigured && supabase) {
-          supabase.from('cash_sessions').update({
+          await supabase.from('cash_sessions').update({
             cash_sales_total: session.cash_sales_total,
             card_sales_total: session.card_sales_total,
             transfer_sales_total: session.transfer_sales_total,
             expected_cash: session.expected_cash
-          }).eq('id', session.id).then(({ error }) => {
-            if (error) console.warn('Supabase cash session update error:', error);
-          });
+          }).eq('id', session.id);
         }
       }
     }
 
     customer.total_purchases_count += 1;
     customer.total_spent += totalAmount;
+
 
     this.data.internalDocs.unshift({
       id: generateUUID(),
@@ -1728,7 +1809,7 @@ class DatabaseEngine {
     return newSale;
   }
 
-  public cancelSale(saleId: string, reason: string, userId: string, userName: string) {
+  public async cancelSale(saleId: string, reason: string, userId: string, userName: string) {
     const sale = this.data.sales.find((s) => s.id === saleId);
     if (!sale) throw new Error('Venta no encontrada');
     if (sale.status === 'anulada') throw new Error('La venta ya fue anulada previamente');
@@ -1748,7 +1829,7 @@ class DatabaseEngine {
     for (const item of items) {
       const prod = this.data.products.find((p) => p.id === item.product_id);
       if (prod) {
-        this.executeKardexMovement({
+        await this.executeKardexMovement({
           productId: prod.id,
           movementType: 'reversion_autorizada',
           quantityIn: item.quantity,
@@ -2011,7 +2092,7 @@ class DatabaseEngine {
   }
 
   // --- CLIENTES EN SUPABASE ---
-  public createCustomer(custData: Omit<Customer, 'id' | 'created_at' | 'total_purchases_count' | 'total_spent'>): Customer {
+  public async createCustomer(custData: Omit<Customer, 'id' | 'created_at' | 'total_purchases_count' | 'total_spent'>): Promise<Customer> {
     const id = generateUUID();
     const newCust: Customer = {
       ...custData,
@@ -2020,10 +2101,9 @@ class DatabaseEngine {
       total_spent: 0,
       created_at: new Date().toISOString(),
     };
-    this.data.customers.unshift(newCust);
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('customers').insert({
+      const { error } = await supabase.from('customers').insert({
         id: newCust.id,
         identification_type: newCust.identification_type,
         identification_number: newCust.identification_number,
@@ -2034,27 +2114,29 @@ class DatabaseEngine {
         is_active: newCust.is_active ?? true,
         total_purchases_count: 0,
         total_spent: 0
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase customer insert error:', error);
       });
+      if (error) {
+        console.error('Supabase customer insert error:', error);
+        throw new Error(`Error en Supabase al registrar cliente: ${error.message}`);
+      }
     }
 
+    this.data.customers.unshift(newCust);
     this.notify();
     return newCust;
   }
 
   // --- PROVEEDORES EN SUPABASE ---
-  public createSupplier(supplierData: Omit<Supplier, 'id' | 'created_at'>): Supplier {
+  public async createSupplier(supplierData: Omit<Supplier, 'id' | 'created_at'>): Promise<Supplier> {
     const id = generateUUID();
     const newSup: Supplier = {
       ...supplierData,
       id,
       created_at: new Date().toISOString(),
     };
-    this.data.suppliers.unshift(newSup);
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('suppliers').insert({
+      const { error } = await supabase.from('suppliers').insert({
         id: newSup.id,
         ruc: newSup.ruc,
         business_name: newSup.business_name,
@@ -2065,27 +2147,29 @@ class DatabaseEngine {
         email: newSup.email || null,
         payment_terms_days: newSup.payment_terms_days || 15,
         is_active: newSup.is_active ?? true
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase supplier insert error:', error);
       });
+      if (error) {
+        console.error('Supabase supplier insert error:', error);
+        throw new Error(`Error en Supabase al registrar proveedor: ${error.message}`);
+      }
     }
 
+    this.data.suppliers.unshift(newSup);
     this.notify();
     return newSup;
   }
 
   // --- ÓRDENES DE COMPRA EN SUPABASE ---
-  public createPurchaseOrder(poData: Omit<PurchaseOrder, 'id' | 'created_at'>): PurchaseOrder {
+  public async createPurchaseOrder(poData: Omit<PurchaseOrder, 'id' | 'created_at'>): Promise<PurchaseOrder> {
     const id = generateUUID();
     const newPo: PurchaseOrder = {
       ...poData,
       id,
       created_at: new Date().toISOString(),
     };
-    this.data.purchaseOrders.unshift(newPo);
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('purchase_orders').insert({
+      const { error } = await supabase.from('purchase_orders').insert({
         id: newPo.id,
         order_number: newPo.order_number,
         supplier_id: newPo.supplier_id,
@@ -2097,14 +2181,18 @@ class DatabaseEngine {
         tax_amount: newPo.tax_amount,
         total_amount: newPo.total_amount,
         notes: newPo.notes || null
-      }).then(({ error }) => {
-        if (error) console.warn('Supabase purchase order insert error:', error);
       });
+      if (error) {
+        console.error('Supabase purchase order insert error:', error);
+        throw new Error(`Error en Supabase al registrar orden de compra: ${error.message}`);
+      }
     }
 
+    this.data.purchaseOrders.unshift(newPo);
     this.notify();
     return newPo;
   }
+
 
   // --- COLA DE CORREO Y NOTIFICACIONES ---
   public enqueueEmail(

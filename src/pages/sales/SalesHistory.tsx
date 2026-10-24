@@ -27,7 +27,7 @@ export const SalesHistory: React.FC = () => {
     window.open(doc.output('bloburl'), '_blank');
   };
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!selectedSale) return;
     if (!cancelReason.trim()) {
       toast.error('Debe indicar el motivo de la anulación');
@@ -35,7 +35,7 @@ export const SalesHistory: React.FC = () => {
     }
 
     try {
-      cancelSale(selectedSale.id, cancelReason);
+      await cancelSale(selectedSale.id, cancelReason);
       setIsCancelModalOpen(false);
       setIsDetailModalOpen(false);
       setCancelReason('');

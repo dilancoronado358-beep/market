@@ -16,18 +16,22 @@ import {
   Edit,
   DollarSign,
   Boxes,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const ProductsList: React.FC = () => {
-  const { products, categories, suppliers, createProduct } = useStore();
+  const { products, categories, suppliers, createProduct, isStoreLoading, refresh } = useStore();
   const { hasPermission } = useAuth();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [categoryFilter, setCategoryFilter] = useState<string>('todos');
+
 
   const filteredProducts = products.filter((p) => {
     if (categoryFilter === 'todos') return true;
@@ -63,7 +67,7 @@ export const ProductsList: React.FC = () => {
       let count = 0;
       for (const row of rows) {
         if (row['Código Interno'] && row['Nombre']) {
-          createProduct(
+          await createProduct(
             {
               internal_code: String(row['Código Interno']),
               barcode: row['Código de Barras'] ? String(row['Código de Barras']) : undefined,
@@ -85,11 +89,20 @@ export const ProductsList: React.FC = () => {
           count++;
         }
       }
-      toast.success(`${count} productos importados correctamente a la base de datos.`);
+      toast.success(`${count} productos importados correctamente a Supabase.`);
     } catch (err: any) {
       toast.error('Error al importar archivo Excel: ' + err.message);
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await refresh();
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -231,6 +244,17 @@ export const ProductsList: React.FC = () => {
             accept=".xlsx, .xls, .csv"
             className="hidden"
           />
+
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<RefreshCw className={`w-3.5 h-3.5 ${isSyncing || isStoreLoading ? 'animate-spin text-brand-600' : ''}`} />}
+            onClick={handleManualSync}
+            disabled={isSyncing || isStoreLoading}
+            title="Sincronizar en vivo con la base de datos de Supabase"
+          >
+            {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+          </Button>
 
           <Button
             variant="secondary"

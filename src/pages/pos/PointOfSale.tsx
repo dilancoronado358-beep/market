@@ -221,7 +221,7 @@ export const PointOfSale: React.FC = () => {
   };
 
   // Procesar Cobro
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error('El carrito de compras está vacío');
       return;
@@ -233,7 +233,7 @@ export const PointOfSale: React.FC = () => {
     }
 
     try {
-      const sale = processSale({
+      const sale = await processSale({
         customerId: selectedCustomerId,
         sessionId: activeSession?.id,
         items: cart.map((i) => ({
