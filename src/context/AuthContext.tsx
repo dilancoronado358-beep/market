@@ -26,20 +26,60 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESSION_KEY = 'erp_pos_ecuador_session';
 
+const getStoredSession = (): string | null => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const val = localStorage.getItem(SESSION_KEY);
+      if (val) return val;
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      return sessionStorage.getItem(SESSION_KEY);
+    }
+  } catch {
+    // Ignorar
+  }
+  return null;
+};
+
+const setStoredSession = (profile: UserProfile) => {
+  try {
+    const val = JSON.stringify(profile);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(SESSION_KEY, val);
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.setItem(SESSION_KEY, val);
+    }
+  } catch {
+    // Ignorar
+  }
+};
+
+const clearStoredSession = () => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(SESSION_KEY);
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  } catch {
+    // Ignorar
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
 
-  // Limpiar cualquier residuo de localStorage y verificar sesión en Supabase / memoria
   useEffect(() => {
     const checkSession = async () => {
+      // Limpiar residuos de bases de datos offline legacy
       try {
         if (typeof localStorage !== 'undefined') {
           localStorage.removeItem('erp_pos_ecuador_db_v1');
-          localStorage.removeItem('erp_pos_ecuador_auth_user');
           localStorage.removeItem('tienda_katy_db_v1');
-          localStorage.removeItem('tienda_katy_auth_user');
         }
       } catch {
         // Ignorar
@@ -75,6 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const foundProfile = profilesList.find((p) => p.email.toLowerCase() === userEmail);
             if (foundProfile && foundProfile.is_active) {
               setUser(foundProfile);
+              setStoredSession(foundProfile);
               setIsLoading(false);
               return;
             }
@@ -84,22 +125,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 3. Verificar sesión temporal en sessionStorage (cerrable al cerrar pestaña, 0 localStorage)
+      // 3. Verificar sesión guardada permanente en localStorage (permanece al cerrar la app)
       try {
-        if (typeof sessionStorage !== 'undefined') {
-          const savedSession = sessionStorage.getItem(SESSION_KEY);
-          if (savedSession) {
-            const parsed = JSON.parse(savedSession);
-            const activeProfile = profilesList.find(
-              (p) => p.email.toLowerCase() === (parsed.email || '').toLowerCase()
-            );
-            if (activeProfile && activeProfile.is_active) {
-              setUser(activeProfile);
-              setIsLoading(false);
-              return;
-            } else {
-              sessionStorage.removeItem(SESSION_KEY);
-            }
+        const savedSession = getStoredSession();
+        if (savedSession) {
+          const parsed = JSON.parse(savedSession);
+          const activeProfile = profilesList.find(
+            (p) => p.email.toLowerCase() === (parsed.email || '').toLowerCase()
+          );
+          if (activeProfile && activeProfile.is_active) {
+            setUser(activeProfile);
+            setStoredSession(activeProfile);
+            setIsLoading(false);
+            return;
+          } else {
+            clearStoredSession();
           }
         }
       } catch {
@@ -205,17 +245,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: 'Esta cuenta ha sido desactivada por el administrador general.' };
     }
 
-    // Establecer usuario en el estado de la aplicación
+    // Establecer usuario en el estado de la aplicación y persistir la sesión
     setUser(targetProfile);
-
-    // Guardar exclusivamente en sessionStorage (NADA en localStorage)
-    try {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(targetProfile));
-      }
-    } catch {
-      // Ignorar
-    }
+    setStoredSession(targetProfile);
 
     // Registrar bitácora de auditoría en Supabase
     db.addAuditLog(
@@ -243,13 +275,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     setUser(null);
-    try {
-      if (typeof sessionStorage !== 'undefined') {
-        sessionStorage.removeItem(SESSION_KEY);
-      }
-    } catch {
-      // Ignorar
-    }
+    clearStoredSession();
   };
 
   const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
@@ -284,13 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const foundUser = allUsers.find((p) => p.role === targetRole && p.is_active);
     if (foundUser) {
       setUser(foundUser);
-      try {
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem(SESSION_KEY, JSON.stringify(foundUser));
-        }
-      } catch {
-        // Ignorar
-      }
+      setStoredSession(foundUser);
       db.addAuditLog(
         foundUser.id,
         foundUser.full_name,
