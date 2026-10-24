@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Sparkles,
   X,
+  Smartphone,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ROLE_LABELS } from '../../types/auth';
@@ -206,6 +207,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           );
         })}
+      </div>
+
+      {/* Botón para instalar PWA en celular */}
+      <div className="px-3 pb-2">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install'))}
+          className={clsx(
+            'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all',
+            'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-sm'
+          )}
+          title="Descargar e instalar aplicación en tu celular"
+        >
+          <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          {!collapsed && (
+            <span className="truncate text-[11px]">
+              Descargar App Celular
+            </span>
+          )}
+        </button>
       </div>
 
       {/* User profile compact footer */}

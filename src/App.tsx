@@ -23,6 +23,7 @@ import { AuditTrail } from './pages/audit/AuditTrail';
 import { UsersManagement } from './pages/users/UsersManagement';
 import { SystemSettings } from './pages/settings/SystemSettings';
 import { PermissionKey } from './types/auth';
+import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 import { Toaster } from 'sonner';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 
@@ -292,6 +293,7 @@ export function App() {
       <AuthProvider>
         <StoreProvider>
           <AppRoutes />
+          <PwaInstallPrompt />
           <Toaster position="top-right" richColors />
         </StoreProvider>
       </AuthProvider>
