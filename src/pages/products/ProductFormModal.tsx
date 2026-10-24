@@ -162,6 +162,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Error al guardar en Supabase:', err);
+      toast.error(err.message || 'Error al guardar producto en Supabase');
     } finally {
       setIsSubmitting(false);
     }
@@ -183,7 +184,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button form="product-form-modal" type="submit" disabled={isSubmitting}>
             {isSubmitting
               ? 'Guardando en Supabase...'
               : productToEdit
@@ -194,7 +195,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       }
     >
 
-      <form onSubmit={handleSubmit} className="space-y-4 py-1 text-xs">
+      <form id="product-form-modal" onSubmit={handleSubmit} className="space-y-4 py-1 text-xs">
         {/* Sección 1: Identificación & Clasificación */}
         <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 block">

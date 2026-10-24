@@ -19,18 +19,20 @@ import {
   Phone,
   Mail,
   MapPin,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const SuppliersList: React.FC = () => {
-  const { suppliers, visits, products, incidents, returns, replacements, createSupplier } = useStore();
+  const { suppliers, visits, products, incidents, returns, replacements, createSupplier, refresh } = useStore();
   const { hasPermission } = useAuth();
 
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [is360ModalOpen, setIs360ModalOpen] = useState(false);
   const [isNewSupplierModalOpen, setIsNewSupplierModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Formulario nuevo proveedor
   const [ruc, setRuc] = useState('');
@@ -42,26 +44,43 @@ export const SuppliersList: React.FC = () => {
   const [email, setEmail] = useState('');
   const [paymentTerms, setPaymentTerms] = useState(15);
 
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await refresh();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleCreateSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ruc.trim()) {
+      toast.error('El número de RUC es obligatorio');
+      return;
+    }
+    if (!businessName.trim()) {
+      toast.error('La Razón Social es obligatoria');
+      return;
+    }
+
     const idValidation = validateEcuadorianId(ruc);
     if (!idValidation.isValid && idValidation.type !== 'consumidor_final') {
-      toast.error('RUC ecuatoriano no válido: ' + idValidation.message);
-      return;
+      toast.warning(`Aviso tributario: ${idValidation.message} (Se guardará con fines de gestión).`);
     }
 
     setIsSubmitting(true);
     try {
       // Guardar directamente en la base de datos de Supabase
       await createSupplier({
-        ruc,
-        business_name: businessName,
-        trade_name: tradeName || businessName,
-        address,
-        city,
-        phone,
-        email,
-        payment_terms_days: paymentTerms,
+        ruc: ruc.trim(),
+        business_name: businessName.trim(),
+        trade_name: (tradeName || businessName).trim(),
+        address: address.trim() || undefined,
+        city: city.trim() || 'Quito',
+        phone: phone.trim() || undefined,
+        email: email.trim() || undefined,
+        payment_terms_days: paymentTerms || 15,
         lead_time_days: 2,
         is_active: true,
       });
@@ -74,8 +93,9 @@ export const SuppliersList: React.FC = () => {
       setAddress('');
       setPhone('');
       setEmail('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'Error al registrar proveedor en Supabase');
     } finally {
       setIsSubmitting(false);
     }
@@ -192,15 +212,28 @@ export const SuppliersList: React.FC = () => {
           </p>
         </div>
 
-        {hasPermission('manage_suppliers') && (
+        <div className="flex items-center gap-2">
           <Button
             size="md"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => setIsNewSupplierModalOpen(true)}
+            variant="outline"
+            icon={<RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />}
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            title="Recargar datos directamente desde Supabase en la nube"
           >
-            Nuevo Proveedor
+            {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
           </Button>
-        )}
+
+          {hasPermission('manage_suppliers') && (
+            <Button
+              size="md"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={() => setIsNewSupplierModalOpen(true)}
+            >
+              Nuevo Proveedor
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* KPI Ribbon Superior */}
@@ -317,13 +350,13 @@ export const SuppliersList: React.FC = () => {
             <Button variant="secondary" onClick={() => setIsNewSupplierModalOpen(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateSupplier} disabled={isSubmitting}>
+            <Button form="form-new-supplier" type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Guardando en Supabase...' : 'Registrar Proveedor Autorizado'}
             </Button>
           </>
         }
       >
-        <form onSubmit={handleCreateSupplier} className="space-y-4 py-1 text-xs">
+        <form id="form-new-supplier" onSubmit={handleCreateSupplier} className="space-y-4 py-1 text-xs">
           {/* Sección 1: Identificación Legal */}
           <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 block">

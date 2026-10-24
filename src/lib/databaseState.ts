@@ -45,6 +45,11 @@ export const generateUUID = (): string => {
   });
 };
 
+export const isValidUUID = (val?: string | null): boolean => {
+  if (!val) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+};
+
 export interface DatabaseSnapshot {
   settings: SystemSettings;
   profiles: UserProfile[];
@@ -670,7 +675,7 @@ class DatabaseEngine {
         barcode: newProduct.barcode || null,
         name: newProduct.name,
         description: newProduct.description || null,
-        category_id: newProduct.category_id && newProduct.category_id.length > 20 ? newProduct.category_id : null,
+        category_id: isValidUUID(newProduct.category_id) ? newProduct.category_id : null,
         brand: newProduct.brand || null,
         model_presentation: newProduct.model_presentation || null,
         unit_of_measure: newProduct.unit_of_measure,
@@ -687,7 +692,7 @@ class DatabaseEngine {
         reserved_stock: 0,
         quarantine_stock: 0,
         location: newProduct.location || null,
-        main_supplier_id: newProduct.main_supplier_id && newProduct.main_supplier_id.length > 20 ? newProduct.main_supplier_id : null,
+        main_supplier_id: isValidUUID(newProduct.main_supplier_id) ? newProduct.main_supplier_id : null,
         is_active: true
       });
 
@@ -758,8 +763,8 @@ class DatabaseEngine {
         min_stock: updated.min_stock,
         max_stock: updated.max_stock,
         location: updated.location || null,
-        category_id: updated.category_id && updated.category_id.length > 20 ? updated.category_id : null,
-        main_supplier_id: updated.main_supplier_id && updated.main_supplier_id.length > 20 ? updated.main_supplier_id : null,
+        category_id: isValidUUID(updated.category_id) ? updated.category_id : null,
+        main_supplier_id: isValidUUID(updated.main_supplier_id) ? updated.main_supplier_id : null,
         is_active: updated.is_active ?? true,
         updated_at: updated.updated_at
       }).eq('id', id);

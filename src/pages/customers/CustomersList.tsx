@@ -7,15 +7,16 @@ import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
 import { validateEcuadorianId } from '../../lib/sriUtils';
-import { Users2, Plus, Phone, Mail, MapPin, DollarSign } from 'lucide-react';
+import { Users2, Plus, Phone, Mail, MapPin, DollarSign, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const CustomersList: React.FC = () => {
-  const { customers, createCustomer } = useStore();
+  const { customers, createCustomer, refresh } = useStore();
 
   const [isNewCustModalOpen, setIsNewCustModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [idType, setIdType] = useState<'cedula' | 'ruc' | 'pasaporte' | 'consumidor_final'>('cedula');
   const [idNumber, setIdNumber] = useState('');
   const [fullName, setFullName] = useState('');
@@ -23,13 +24,30 @@ export const CustomersList: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
 
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await refresh();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!idNumber.trim()) {
+      toast.error('El número de identificación es obligatorio');
+      return;
+    }
+    if (!fullName.trim()) {
+      toast.error('Los nombres / razón social son obligatorios');
+      return;
+    }
+
     if (idType === 'cedula' || idType === 'ruc') {
       const val = validateEcuadorianId(idNumber);
       if (!val.isValid && val.type !== 'consumidor_final') {
-        toast.error('Identificación inválida: ' + val.message);
-        return;
+        toast.warning(`Aviso tributario: ${val.message} (Se guardará para control comercial).`);
       }
     }
 
@@ -37,11 +55,11 @@ export const CustomersList: React.FC = () => {
     try {
       await createCustomer({
         identification_type: idType,
-        identification_number: idNumber,
-        full_name: fullName,
-        email: email || undefined,
-        phone: phone || undefined,
-        address: address || undefined,
+        identification_number: idNumber.trim(),
+        full_name: fullName.trim(),
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+        address: address.trim() || undefined,
         is_active: true,
       });
 
@@ -52,8 +70,9 @@ export const CustomersList: React.FC = () => {
       setEmail('');
       setPhone('');
       setAddress('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'Error al guardar cliente en Supabase');
     } finally {
       setIsSubmitting(false);
     }
@@ -139,13 +158,26 @@ export const CustomersList: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          onClick={() => setIsNewCustModalOpen(true)}
-          icon={<Plus className="w-4 h-4" />}
-          size="md"
-        >
-          Nuevo Cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="md"
+            variant="outline"
+            icon={<RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />}
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            title="Recargar datos directamente desde Supabase en la nube"
+          >
+            {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+          </Button>
+
+          <Button
+            onClick={() => setIsNewCustModalOpen(true)}
+            icon={<Plus className="w-4 h-4" />}
+            size="md"
+          >
+            Nuevo Cliente
+          </Button>
+        </div>
       </div>
 
       {/* KPI Ribbon */}
@@ -194,13 +226,13 @@ export const CustomersList: React.FC = () => {
             <Button variant="secondary" onClick={() => setIsNewCustModalOpen(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateCustomer} disabled={isSubmitting}>
+            <Button form="form-new-customer" type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Guardando en Supabase...' : 'Guardar Cliente'}
             </Button>
           </>
         }
       >
-        <form onSubmit={handleCreateCustomer} className="space-y-4 py-1 text-xs">
+        <form id="form-new-customer" onSubmit={handleCreateCustomer} className="space-y-4 py-1 text-xs">
           {/* Sección 1: Identificación Legal */}
           <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 block">
