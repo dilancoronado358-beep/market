@@ -5,6 +5,7 @@ import { Product } from '../../types/database';
 import { DataTable, Column } from '../../components/common/DataTable';
 import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
+import { Modal } from '../../components/common/Modal';
 import { ProductFormModal } from './ProductFormModal';
 import { exportToExcel, exportToCsv, parseExcelFile } from '../../lib/excelUtils';
 import {
@@ -18,15 +19,17 @@ import {
   Boxes,
   RefreshCw,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const ProductsList: React.FC = () => {
-  const { products, categories, suppliers, createProduct, isStoreLoading, refresh } = useStore();
+  const { products, categories, suppliers, createProduct, deleteProduct, isStoreLoading, refresh } = useStore();
   const { hasPermission } = useAuth();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -193,18 +196,28 @@ export const ProductsList: React.FC = () => {
       key: 'actions',
       header: 'Acciones',
       render: (p) => (
-        <Button
-          size="sm"
-          variant="ghost"
-          icon={<Edit className="w-3.5 h-3.5" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setProductToEdit(p);
-            setIsFormOpen(true);
-          }}
-        >
-          Editar
-        </Button>
+        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<Edit className="w-3.5 h-3.5" />}
+            onClick={() => {
+              setProductToEdit(p);
+              setIsFormOpen(true);
+            }}
+          >
+            Editar
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+            onClick={() => setProductToDelete(p)}
+            title="Eliminar producto"
+          >
+            Eliminar
+          </Button>
+        </div>
       ),
     },
   ];
@@ -364,6 +377,50 @@ export const ProductsList: React.FC = () => {
         }}
         productToEdit={productToEdit}
       />
+
+      {/* Modal Confirmación de Eliminación de Producto */}
+      {productToDelete && (
+        <Modal
+          isOpen={Boolean(productToDelete)}
+          onClose={() => setProductToDelete(null)}
+          title="Confirmar Eliminación de Producto"
+          maxWidth="sm"
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setProductToDelete(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                icon={<Trash2 className="w-4 h-4" />}
+                onClick={async () => {
+                  try {
+                    await deleteProduct(productToDelete.id);
+                    setProductToDelete(null);
+                  } catch (err: any) {
+                    toast.error(err.message || 'Error al eliminar producto');
+                  }
+                }}
+              >
+                Sí, Eliminar
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              ¿Estás seguro de que deseas eliminar permanentemente el producto{' '}
+              <strong className="text-rose-600 dark:text-rose-400">
+                {productToDelete.name}
+              </strong>{' '}
+              (Código: {productToDelete.internal_code})?
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Esta acción eliminará el artículo del catálogo en Supabase y de la pantalla al instante.
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

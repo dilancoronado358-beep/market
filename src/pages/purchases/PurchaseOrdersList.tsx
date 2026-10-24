@@ -7,14 +7,15 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
-import { FileSpreadsheet, Plus, CheckCircle, Clock, Truck } from 'lucide-react';
+import { FileSpreadsheet, Plus, CheckCircle, Clock, Truck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const PurchaseOrdersList: React.FC = () => {
-  const { purchaseOrders, suppliers, products } = useStore();
+  const { purchaseOrders, suppliers, products, deletePurchaseOrder } = useStore();
   const { user, hasPermission } = useAuth();
 
+  const [orderToDelete, setOrderToDelete] = useState<PurchaseOrder | null>(null);
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [expectedDate, setExpectedDate] = useState(() => {
@@ -155,6 +156,23 @@ export const PurchaseOrdersList: React.FC = () => {
           </Badge>
         );
       },
+    },
+    {
+      key: 'actions',
+      header: 'Acciones',
+      render: (o) => (
+        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="danger"
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+            onClick={() => setOrderToDelete(o)}
+            title="Eliminar orden de compra"
+          >
+            Eliminar
+          </Button>
+        </div>
+      ),
     },
   ];
 
@@ -466,6 +484,50 @@ export const PurchaseOrdersList: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Confirmación de Eliminación de Orden de Compra */}
+      {orderToDelete && (
+        <Modal
+          isOpen={Boolean(orderToDelete)}
+          onClose={() => setOrderToDelete(null)}
+          title="Confirmar Eliminación de Orden de Compra"
+          maxWidth="sm"
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setOrderToDelete(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                icon={<Trash2 className="w-4 h-4" />}
+                onClick={async () => {
+                  try {
+                    await deletePurchaseOrder(orderToDelete.id);
+                    setOrderToDelete(null);
+                  } catch (err: any) {
+                    toast.error(err.message || 'Error al eliminar orden de compra');
+                  }
+                }}
+              >
+                Sí, Eliminar
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              ¿Estás seguro de que deseas eliminar permanentemente la orden de compra{' '}
+              <strong className="text-rose-600 dark:text-rose-400">
+                {orderToDelete.order_number}
+              </strong>{' '}
+              ({orderToDelete.supplier_name} - ${orderToDelete.total_amount.toFixed(2)})?
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Esta acción eliminará el registro de Supabase y de la lista en pantalla de forma inmediata.
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

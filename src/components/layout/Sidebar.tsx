@@ -22,6 +22,7 @@ import {
   Sparkles,
   X,
   Smartphone,
+  LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ROLE_LABELS } from '../../types/auth';
@@ -53,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen = false,
   onCloseMobile,
 }) => {
-  const { user, hasPermission } = useAuth();
+  const { user, hasPermission, logout } = useAuth();
 
   const navGroups: { group: string; items: NavItem[] }[] = [
     {
@@ -235,7 +236,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* User profile compact footer */}
       {user && (
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-850/40">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 shrink-0 bg-slate-50/50 dark:bg-slate-850/40 space-y-2">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center font-bold text-xs uppercase shrink-0">
               {user.full_name.slice(0, 2)}
@@ -251,6 +252,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
           </div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (onCloseMobile) onCloseMobile();
+              await logout();
+            }}
+            className={clsx(
+              'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900 transition-all cursor-pointer',
+              collapsed && !isMobileOpen && 'justify-center px-0'
+            )}
+            title="Cerrar Sesión del sistema"
+          >
+            <LogOut className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+            {(!collapsed || isMobileOpen) && <span>Cerrar Sesión</span>}
+          </button>
         </div>
       )}
     </aside>

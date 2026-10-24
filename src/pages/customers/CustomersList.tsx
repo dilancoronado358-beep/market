@@ -7,13 +7,14 @@ import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
 import { validateEcuadorianId } from '../../lib/sriUtils';
-import { Users2, Plus, Phone, Mail, MapPin, DollarSign, RefreshCw } from 'lucide-react';
+import { Users2, Plus, Phone, Mail, MapPin, DollarSign, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const CustomersList: React.FC = () => {
-  const { customers, createCustomer, refresh } = useStore();
+  const { customers, createCustomer, deleteCustomer, refresh } = useStore();
 
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [isNewCustModalOpen, setIsNewCustModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -129,6 +130,23 @@ export const CustomersList: React.FC = () => {
         <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-xs">
           ${c.total_spent.toFixed(2)}
         </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Acciones',
+      render: (c) => (
+        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="danger"
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+            onClick={() => setCustomerToDelete(c)}
+            title="Eliminar cliente"
+          >
+            Eliminar
+          </Button>
+        </div>
       ),
     },
   ];
@@ -308,6 +326,50 @@ export const CustomersList: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Confirmación de Eliminación de Cliente */}
+      {customerToDelete && (
+        <Modal
+          isOpen={Boolean(customerToDelete)}
+          onClose={() => setCustomerToDelete(null)}
+          title="Confirmar Eliminación de Cliente"
+          maxWidth="sm"
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setCustomerToDelete(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                icon={<Trash2 className="w-4 h-4" />}
+                onClick={async () => {
+                  try {
+                    await deleteCustomer(customerToDelete.id);
+                    setCustomerToDelete(null);
+                  } catch (err: any) {
+                    toast.error(err.message || 'Error al eliminar cliente');
+                  }
+                }}
+              >
+                Sí, Eliminar
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              ¿Estás seguro de que deseas eliminar permanentemente al cliente{' '}
+              <strong className="text-rose-600 dark:text-rose-400">
+                {customerToDelete.full_name}
+              </strong>{' '}
+              ({customerToDelete.identification_type.toUpperCase()}: {customerToDelete.identification_number})?
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Esta acción eliminará al cliente de Supabase y de la lista en pantalla de forma inmediata.
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

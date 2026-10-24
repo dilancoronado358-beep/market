@@ -37,6 +37,10 @@ interface StoreContextType extends DatabaseSnapshot {
   createCustomer: (data: any) => Promise<any>;
   createSupplier: (data: any) => Promise<any>;
   createPurchaseOrder: (data: any) => Promise<any>;
+  deleteProduct: (id: string) => Promise<boolean>;
+  deleteSupplier: (id: string) => Promise<boolean>;
+  deleteCustomer: (id: string) => Promise<boolean>;
+  deletePurchaseOrder: (id: string) => Promise<boolean>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -335,6 +339,50 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return po;
           } catch (e: any) {
             toast.error(e.message || 'Error al registrar orden de compra');
+            throw e;
+          }
+        },
+        deleteProduct: async (id: string) => {
+          try {
+            const res = await db.deleteProduct(id, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
+            toast.success('Producto eliminado del catálogo exitosamente.');
+            return res;
+          } catch (e: any) {
+            toast.error(e.message || 'Error al eliminar producto');
+            throw e;
+          }
+        },
+        deleteSupplier: async (id: string) => {
+          try {
+            const res = await db.deleteSupplier(id, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
+            toast.success('Proveedor eliminado exitosamente.');
+            return res;
+          } catch (e: any) {
+            toast.error(e.message || 'Error al eliminar proveedor');
+            throw e;
+          }
+        },
+        deleteCustomer: async (id: string) => {
+          try {
+            const res = await db.deleteCustomer(id, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
+            toast.success('Cliente eliminado exitosamente.');
+            return res;
+          } catch (e: any) {
+            toast.error(e.message || 'Error al eliminar cliente');
+            throw e;
+          }
+        },
+        deletePurchaseOrder: async (id: string) => {
+          try {
+            const res = await db.deletePurchaseOrder(id, currentUserId, currentUserName);
+            setSnapshot(db.getSnapshot());
+            toast.success('Orden de compra eliminada exitosamente.');
+            return res;
+          } catch (e: any) {
+            toast.error(e.message || 'Error al eliminar orden de compra');
             throw e;
           }
         },

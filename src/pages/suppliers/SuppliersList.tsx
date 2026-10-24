@@ -20,15 +20,17 @@ import {
   Mail,
   MapPin,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const SuppliersList: React.FC = () => {
-  const { suppliers, visits, products, incidents, returns, replacements, createSupplier, refresh } = useStore();
+  const { suppliers, visits, products, incidents, returns, replacements, createSupplier, deleteSupplier, refresh } = useStore();
   const { hasPermission } = useAuth();
 
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
   const [is360ModalOpen, setIs360ModalOpen] = useState(false);
   const [isNewSupplierModalOpen, setIsNewSupplierModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,18 +172,28 @@ export const SuppliersList: React.FC = () => {
       key: 'actions',
       header: 'Acciones',
       render: (s) => (
-        <Button
-          size="sm"
-          variant="outline"
-          icon={<History className="w-3.5 h-3.5" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedSupplier(s);
-            setIs360ModalOpen(true);
-          }}
-        >
-          Historial 360°
-        </Button>
+        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="outline"
+            icon={<History className="w-3.5 h-3.5" />}
+            onClick={() => {
+              setSelectedSupplier(s);
+              setIs360ModalOpen(true);
+            }}
+          >
+            Historial
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            icon={<Trash2 className="w-3.5 h-3.5" />}
+            onClick={() => setSupplierToDelete(s)}
+            title="Eliminar proveedor de Supabase"
+          >
+            Eliminar
+          </Button>
+        </div>
       ),
     },
   ];
@@ -438,6 +450,50 @@ export const SuppliersList: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Confirmación de Eliminación */}
+      {supplierToDelete && (
+        <Modal
+          isOpen={Boolean(supplierToDelete)}
+          onClose={() => setSupplierToDelete(null)}
+          title="Confirmar Eliminación de Proveedor"
+          maxWidth="sm"
+          footer={
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setSupplierToDelete(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                icon={<Trash2 className="w-4 h-4" />}
+                onClick={async () => {
+                  try {
+                    await deleteSupplier(supplierToDelete.id);
+                    setSupplierToDelete(null);
+                  } catch (err: any) {
+                    toast.error(err.message || 'Error al eliminar proveedor');
+                  }
+                }}
+              >
+                Sí, Eliminar
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-slate-700 dark:text-slate-200">
+              ¿Estás seguro de que deseas eliminar permanentemente al proveedor{' '}
+              <strong className="text-rose-600 dark:text-rose-400">
+                {supplierToDelete.trade_name || supplierToDelete.business_name}
+              </strong>{' '}
+              (RUC: {supplierToDelete.ruc})?
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Esta acción eliminará el proveedor de Supabase y de la lista en pantalla de forma inmediata.
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

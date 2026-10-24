@@ -805,6 +805,24 @@ class DatabaseEngine {
     return updated;
   }
 
+  public async deleteProduct(id: string, userId: string = 'd0000000-0000-0000-0000-000000000001', userName: string = 'Sistema'): Promise<boolean> {
+    const prod = this.data.products.find((p) => p.id === id);
+    if (!prod) return false;
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase product delete error:', error);
+        throw new Error(`Error en Supabase al eliminar producto: ${error.message}`);
+      }
+    }
+
+    this.data.products = this.data.products.filter((p) => p.id !== id);
+    this.addAuditLog(userId, userName, 'ELIMINACION_PRODUCTO', 'Catálogo Productos', id, `Producto eliminado: ${prod.name} (${prod.internal_code})`);
+    this.notify();
+    return true;
+  }
+
   // --- KARDEX INMUTABLE Y COSTO PROMEDIO EN SUPABASE ---
   public async executeKardexMovement(params: {
     productId: string;
@@ -2159,6 +2177,24 @@ class DatabaseEngine {
     return newCust;
   }
 
+  public async deleteCustomer(id: string, userId: string = 'd0000000-0000-0000-0000-000000000001', userName: string = 'Sistema'): Promise<boolean> {
+    const cust = this.data.customers.find((c) => c.id === id);
+    if (!cust) return false;
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('customers').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase customer delete error:', error);
+        throw new Error(`Error en Supabase al eliminar cliente: ${error.message}`);
+      }
+    }
+
+    this.data.customers = this.data.customers.filter((c) => c.id !== id);
+    this.addAuditLog(userId, userName, 'ELIMINACION_CLIENTE', 'Clientes', id, `Cliente eliminado: ${cust.full_name} (${cust.identification_number})`);
+    this.notify();
+    return true;
+  }
+
   // --- PROVEEDORES EN SUPABASE ---
   public async createSupplier(supplierData: Omit<Supplier, 'id' | 'created_at'>): Promise<Supplier> {
     const id = generateUUID();
@@ -2190,6 +2226,24 @@ class DatabaseEngine {
     this.data.suppliers = [newSup, ...this.data.suppliers];
     this.notify();
     return newSup;
+  }
+
+  public async deleteSupplier(id: string, userId: string = 'd0000000-0000-0000-0000-000000000001', userName: string = 'Sistema'): Promise<boolean> {
+    const sup = this.data.suppliers.find((s) => s.id === id);
+    if (!sup) return false;
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('suppliers').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase supplier delete error:', error);
+        throw new Error(`Error en Supabase al eliminar proveedor: ${error.message}`);
+      }
+    }
+
+    this.data.suppliers = this.data.suppliers.filter((s) => s.id !== id);
+    this.addAuditLog(userId, userName, 'ELIMINACION_PROVEEDOR', 'Proveedores', id, `Proveedor eliminado: ${sup.trade_name || sup.business_name} (${sup.ruc})`);
+    this.notify();
+    return true;
   }
 
   // --- ÓRDENES DE COMPRA EN SUPABASE ---
@@ -2224,6 +2278,24 @@ class DatabaseEngine {
     this.data.purchaseOrders = [newPo, ...this.data.purchaseOrders];
     this.notify();
     return newPo;
+  }
+
+  public async deletePurchaseOrder(id: string, userId: string = 'd0000000-0000-0000-0000-000000000001', userName: string = 'Sistema'): Promise<boolean> {
+    const po = this.data.purchaseOrders.find((p) => p.id === id);
+    if (!po) return false;
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase purchase order delete error:', error);
+        throw new Error(`Error en Supabase al eliminar orden de compra: ${error.message}`);
+      }
+    }
+
+    this.data.purchaseOrders = this.data.purchaseOrders.filter((p) => p.id !== id);
+    this.addAuditLog(userId, userName, 'ELIMINACION_ORDEN_COMPRA', 'Compras', id, `Orden de compra eliminada: ${po.order_number}`);
+    this.notify();
+    return true;
   }
 
 
