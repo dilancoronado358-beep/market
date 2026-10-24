@@ -130,29 +130,28 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         Html5QrcodeSupportedFormats.DATA_MATRIX,
       ];
 
+      // Desactivar useBarCodeDetectorIfSupported para que use el motor ZXing puro
+      // (En iOS Safari BarcodeDetector nativo no soporta formatos 1D como EAN-13 y causa que no detecte nada)
       const scanner = new Html5Qrcode(containerId.current, {
         formatsToSupport,
         verbose: false,
-        useBarCodeDetectorIfSupported: true,
+        useBarCodeDetectorIfSupported: false,
         experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true,
+          useBarCodeDetectorIfSupported: false,
         },
       });
       scannerRef.current = scanner;
 
+      // Configuración de escaneo de alto rendimiento y frame completo
       const config = {
-        fps: 20, // Mayor frecuencia de escaneo para detectar rápidamente
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          // Relación de aspecto apaisada para códigos de barra (EAN-13, etc.)
-          const width = Math.min(Math.floor(viewfinderWidth * 0.88), 440);
-          const height = Math.min(Math.floor(viewfinderHeight * 0.55), 220);
-          return { width, height };
-        },
-        aspectRatio: 1.777778,
+        fps: 25, // Máxima fluidez de escaneo
+        // Al NO recortar con qrbox internamente, el motor decodifica todo el encuadre
+        // de la cámara, garantizando detección instantánea incluso si el código está un poco lejos o ladeado
         videoConstraints: {
           facingMode: { ideal: 'environment' },
-          width: { min: 640, ideal: 1280, max: 1920 },
-          height: { min: 480, ideal: 720, max: 1080 },
+          focusMode: { ideal: 'continuous' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
       };
 
@@ -163,7 +162,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           handleSuccessfulScan(decodedText);
         },
         () => {
-          // Ignorar frames no decodificados para no saturar la consola
+          // Frame sin código detectado, continuar escaneando fluidamente
         }
       );
 
@@ -214,6 +213,14 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       playBeep();
     }
 
+    try {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate(80);
+      }
+    } catch {
+      // Ignorar si el dispositivo no soporta vibración
+    }
+
     setLastScanned(clean);
     setScannedCount((c) => c + 1);
     toast.success(`Código escaneado: ${clean}`);
@@ -253,7 +260,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             Html5QrcodeSupportedFormats.ITF,
           ],
           verbose: false,
-          useBarCodeDetectorIfSupported: true,
+          useBarCodeDetectorIfSupported: false,
         });
       }
 
