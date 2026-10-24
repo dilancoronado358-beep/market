@@ -104,7 +104,7 @@ export function DataTable<T extends Record<string, any>>({
   return (
     <div className="space-y-3">
       {/* Barra superior de búsqueda y acciones */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         <div className="relative w-full sm:w-80">
           <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -116,7 +116,7 @@ export function DataTable<T extends Record<string, any>>({
             }}
             placeholder={searchPlaceholder}
             className={clsx(
-              "w-full pl-8 py-1.5 text-xs rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-400 focus:border-slate-900 shadow-subtle transition-colors",
+              "w-full pl-8 py-2 sm:py-1.5 text-xs rounded-lg sm:rounded-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-slate-400 focus:border-slate-900 shadow-subtle transition-colors",
               enableBarcodeScanner ? "pr-22" : "pr-3"
             )}
           />
@@ -124,7 +124,7 @@ export function DataTable<T extends Record<string, any>>({
             <button
               type="button"
               onClick={() => setIsScannerOpen(true)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white text-[10px] font-semibold transition-colors shadow-xs"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors shadow-xs"
               title="Escanear código de barras con la cámara"
             >
               <Camera className="w-3 h-3" />
@@ -133,12 +133,12 @@ export function DataTable<T extends Record<string, any>>({
           )}
         </div>
 
-        {actions && <div className="flex items-center gap-2 self-end sm:self-auto">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">{actions}</div>}
       </div>
 
       {/* Tabla con scroll horizontal responsivo */}
-      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 shadow-subtle bg-white dark:bg-slate-900">
-        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-left text-xs">
+      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 shadow-subtle bg-white dark:bg-slate-900 -mx-1 sm:mx-0">
+        <table className="min-w-[680px] w-full divide-y divide-slate-200 dark:divide-slate-800 text-left text-xs">
           <thead className="bg-slate-50 dark:bg-slate-850/90 text-slate-600 dark:text-slate-300 font-semibold text-[11px] uppercase tracking-wider">
             <tr>
               {columns.map((col) => (
@@ -201,7 +201,7 @@ export function DataTable<T extends Record<string, any>>({
       </div>
 
       {/* Paginación */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 px-1">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 px-1 text-center sm:text-left">
         <div>
           Mostrando <span className="font-semibold text-slate-700 dark:text-slate-200">{filteredData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}</span> a{' '}
           <span className="font-semibold text-slate-700 dark:text-slate-200">{Math.min(currentPage * itemsPerPage, filteredData.length)}</span> de{' '}

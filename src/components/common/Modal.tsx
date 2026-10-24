@@ -59,7 +59,7 @@ export const Modal: React.FC<ModalProps> = ({
 
       <div
         className={clsx(
-          'relative z-10 rounded-2xl bg-white dark:bg-slate-900 text-left shadow-2xl transition-all w-full border border-slate-200 dark:border-slate-800 animate-slide-up flex flex-col max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] my-auto overflow-hidden',
+          'relative z-10 rounded-2xl bg-white dark:bg-slate-900 text-left shadow-2xl transition-all w-full border border-slate-200 dark:border-slate-800 animate-slide-up flex flex-col max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-3rem)] my-auto overflow-hidden',
           maxWidthStyles[maxWidth]
         )}
       >
@@ -91,7 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         {/* Footer - Pinned Bottom */}
         {footer && (
-          <div className="px-4 py-3 sm:px-8 sm:py-4 bg-slate-50 dark:bg-slate-850/90 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0">
+          <div className="px-4 py-3 sm:px-8 sm:py-4 bg-slate-50 dark:bg-slate-850/90 border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 shrink-0 [&>button]:w-full [&>button]:sm:w-auto">
             {footer}
           </div>
         )}

@@ -167,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           return (
             <div key={gIdx} className="space-y-1">
-              {!collapsed && (
+              {(!collapsed || isMobileOpen) && (
                 <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
                   {group.group}
                 </p>
@@ -181,22 +181,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onNavigate(item.id);
                       if (onCloseMobile) onCloseMobile();
                     }}
-                    title={collapsed ? item.label : undefined}
+                    title={collapsed && !isMobileOpen ? item.label : undefined}
                     className={clsx(
-                      'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 relative group',
+                      'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 relative group cursor-pointer',
                       isActive
                         ? 'bg-slate-900 text-white shadow-sm font-semibold'
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white',
-                      collapsed && 'justify-center px-0'
+                      collapsed && !isMobileOpen && 'justify-center px-0'
                     )}
                   >
                     <span className={clsx('shrink-0', isActive ? 'text-white' : 'text-slate-400 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200')}>
                       {item.icon}
                     </span>
 
-                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {(!collapsed || isMobileOpen) && <span className="truncate">{item.label}</span>}
 
-                    {item.highlight && !collapsed && (
+                    {item.highlight && (!collapsed || isMobileOpen) && (
                       <span className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         <Sparkles className="w-2.5 h-2.5" /> Clave
                       </span>
@@ -213,15 +213,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="px-3 pb-2">
         <button
           type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent('open-pwa-install'))}
+          onClick={() => {
+            if (onCloseMobile) onCloseMobile();
+            window.dispatchEvent(new CustomEvent('open-pwa-install'));
+          }}
           className={clsx(
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all',
-            'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-sm'
+            'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer',
+            'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shadow-sm',
+            collapsed && !isMobileOpen && 'justify-center px-0'
           )}
           title="Descargar e instalar aplicación en tu celular"
         >
           <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          {!collapsed && (
+          {(!collapsed || isMobileOpen) && (
             <span className="truncate text-[11px]">
               Descargar App Celular
             </span>
@@ -236,7 +240,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 flex items-center justify-center font-bold text-xs uppercase shrink-0">
               {user.full_name.slice(0, 2)}
             </div>
-            {!collapsed && (
+            {(!collapsed || isMobileOpen) && (
               <div className="truncate flex-1">
                 <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                   {user.full_name}

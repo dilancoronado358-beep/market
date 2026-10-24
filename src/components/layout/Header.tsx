@@ -68,16 +68,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
   const unreadNotifs = notifications.filter((n) => !n.is_read);
 
   return (
-    <header className="h-14 px-3 sm:px-6 bg-white dark:bg-[#0c1322] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors shadow-subtle">
+    <header className="h-14 px-2.5 sm:px-6 bg-white dark:bg-[#0c1322] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors shadow-subtle overflow-x-hidden">
       {/* Botón menú móvil + Local / Sucursal y Búsqueda */}
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
         {/* Botón menú hamburguesa en móviles */}
         <button
           onClick={onToggleMobileMenu}
-          className="lg:hidden p-1.5 -ml-1 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0"
+          className="lg:hidden p-2 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors shrink-0 active:scale-95"
           title="Abrir menú de navegación"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-5 h-5 text-slate-900 dark:text-white" />
         </button>
 
         {/* Logo y título compacto en móvil */}
@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
             className="w-6 h-6 object-contain rounded bg-slate-900 p-0.5"
           />
           <span className="font-extrabold text-xs tracking-tight text-slate-900 dark:text-white sm:inline hidden">
-            ERP / POS
+            POS Ecuador
           </span>
         </div>
 
@@ -102,13 +102,23 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
           </span>
         </div>
 
+        {/* Botón Búsqueda Móvil Compacto */}
         <button
           onClick={onOpenSearch}
-          className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-md bg-slate-50 dark:bg-slate-850 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs transition-colors border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 truncate"
+          className="sm:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+          title="Buscar"
+        >
+          <Search className="w-4 h-4" />
+        </button>
+
+        {/* Botón Búsqueda Desktop / Tablet */}
+        <button
+          onClick={onOpenSearch}
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-50 dark:bg-slate-850 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs transition-colors border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 truncate"
         >
           <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="hidden sm:inline text-slate-500">Buscar producto, visita, venta...</span>
-          <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-mono rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500">
+          <span className="text-slate-500">Buscar producto, visita, venta...</span>
+          <kbd className="hidden lg:inline-block px-1.5 py-0.2 text-[10px] font-mono rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500">
             Ctrl+K
           </kbd>
         </button>

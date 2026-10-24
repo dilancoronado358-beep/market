@@ -23,6 +23,18 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-slate-300 dark:bg-slate-700 rounded-full hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors;
   }
+
+  /* Prevenir zoom forzado e incómodo en iOS Safari al tocar inputs */
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* Soporte de scroll táctil fluido en celulares */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @layer components {

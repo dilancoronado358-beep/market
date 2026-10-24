@@ -183,11 +183,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     >
       <form onSubmit={handleSubmit} className="space-y-4 py-1 text-xs">
         {/* Sección 1: Identificación & Clasificación */}
-        <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 block">
             1. Identificación & Clasificación del Artículo
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <Input
               label="Código Interno Único *"
               value={internalCode}
@@ -210,7 +210,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsScannerOpen(true)}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-900 dark:bg-brand-600 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors shadow-xs"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-900 dark:bg-brand-600 hover:bg-slate-800 text-white text-[11px] font-semibold transition-colors shadow-xs"
                   title="Escanear con cámara del dispositivo"
                 >
                   <Camera className="w-3.5 h-3.5" />
@@ -226,7 +226,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               onChange={(e) => setSku(e.target.value)}
             />
 
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 lg:col-span-2">
               <Input
                 label="Nombre Oficial del Producto *"
                 placeholder="Ej: Aceite Vegetal La Favorita 1 Litro"
@@ -288,8 +288,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         </div>
 
         {/* Sección 2: Precios, Costos y Tributación */}
-        <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
               2. Esquema de Precios, Rentabilidad & IVA (SRI Ecuador)
             </span>
@@ -298,7 +298,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Costo de Compra ($) *
@@ -360,11 +360,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         </div>
 
         {/* Sección 3: Stock y Almacenamiento */}
-        <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 block">
             3. Control de Existencias & Ubicación en Almacén
           </span>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Stock Mínimo (Alerta)
