@@ -810,6 +810,69 @@ class DatabaseEngine {
     if (!prod) return false;
 
     if (isSupabaseConfigured && supabase) {
+      // Limpieza en cascada de registros que referencian al producto para evitar violaciones de Foreign Key
+      try {
+        await supabase.from('supplier_replacements').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_replacements warning:', err);
+      }
+      try {
+        await supabase.from('supplier_exchange_items').delete().eq('original_product_id', id);
+        await supabase.from('supplier_exchange_items').delete().eq('replacement_product_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_exchange_items warning:', err);
+      }
+      try {
+        await supabase.from('supplier_return_items').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_return_items warning:', err);
+      }
+      try {
+        await supabase.from('supplier_incidents').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_incidents warning:', err);
+      }
+      try {
+        await supabase.from('supplier_visit_items').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_visit_items warning:', err);
+      }
+      try {
+        await supabase.from('purchase_order_items').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup purchase_order_items warning:', err);
+      }
+      try {
+        await supabase.from('inventory_movements').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup inventory_movements warning:', err);
+      }
+      try {
+        await supabase.from('sale_items').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup sale_items warning:', err);
+      }
+      try {
+        await supabase.from('internal_doc_items').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup internal_doc_items warning:', err);
+      }
+      try {
+        await supabase.from('product_prices').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup product_prices warning:', err);
+      }
+      try {
+        await supabase.from('product_barcodes').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup product_barcodes warning:', err);
+      }
+      try {
+        await supabase.from('product_supplier_codes').delete().eq('product_id', id);
+      } catch (err) {
+        console.warn('cleanup product_supplier_codes warning:', err);
+      }
+
       const { error } = await supabase.from('products').delete().eq('id', id);
       if (error) {
         console.error('Supabase product delete error:', error);
@@ -818,6 +881,12 @@ class DatabaseEngine {
     }
 
     this.data.products = this.data.products.filter((p) => p.id !== id);
+    this.data.replacements = (this.data.replacements || []).filter((r) => r.product_id !== id);
+    this.data.incidents = (this.data.incidents || []).filter((i) => i.product_id !== id);
+    this.data.movements = (this.data.movements || []).filter((m) => m.product_id !== id);
+    this.data.visitItems = (this.data.visitItems || []).filter((it) => it.product_id !== id);
+    this.data.saleItems = (this.data.saleItems || []).filter((si) => si.product_id !== id);
+
     this.addAuditLog(userId, userName, 'ELIMINACION_PRODUCTO', 'Catálogo Productos', id, `Producto eliminado: ${prod.name} (${prod.internal_code})`);
     this.notify();
     return true;
@@ -2182,6 +2251,17 @@ class DatabaseEngine {
     if (!cust) return false;
 
     if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('sales').update({ customer_id: null }).eq('customer_id', id);
+      } catch (err) {
+        console.warn('cleanup sales customer link warning:', err);
+      }
+      try {
+        await supabase.from('inventory_movements').update({ customer_id: null }).eq('customer_id', id);
+      } catch (err) {
+        console.warn('cleanup inventory_movements customer link warning:', err);
+      }
+
       const { error } = await supabase.from('customers').delete().eq('id', id);
       if (error) {
         console.error('Supabase customer delete error:', error);
@@ -2233,6 +2313,86 @@ class DatabaseEngine {
     if (!sup) return false;
 
     if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('supplier_replacements').delete().eq('supplier_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_replacements warning:', err);
+      }
+      try {
+        const { data: exchs } = await supabase.from('supplier_exchanges').select('id').eq('supplier_id', id);
+        if (exchs && exchs.length > 0) {
+          for (const ex of exchs) {
+            await supabase.from('supplier_exchange_items').delete().eq('exchange_id', ex.id);
+          }
+          await supabase.from('supplier_exchanges').delete().eq('supplier_id', id);
+        }
+      } catch (err) {
+        console.warn('cleanup supplier_exchanges warning:', err);
+      }
+      try {
+        const { data: rets } = await supabase.from('supplier_returns').select('id').eq('supplier_id', id);
+        if (rets && rets.length > 0) {
+          for (const ret of rets) {
+            await supabase.from('supplier_return_items').delete().eq('return_id', ret.id);
+          }
+          await supabase.from('supplier_returns').delete().eq('supplier_id', id);
+        }
+      } catch (err) {
+        console.warn('cleanup supplier_returns warning:', err);
+      }
+      try {
+        await supabase.from('supplier_incidents').delete().eq('supplier_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_incidents warning:', err);
+      }
+      try {
+        const { data: vsts } = await supabase.from('supplier_visits').select('id').eq('supplier_id', id);
+        if (vsts && vsts.length > 0) {
+          for (const vst of vsts) {
+            await supabase.from('supplier_visit_items').delete().eq('visit_id', vst.id);
+          }
+          await supabase.from('supplier_visits').delete().eq('supplier_id', id);
+        }
+      } catch (err) {
+        console.warn('cleanup supplier_visits warning:', err);
+      }
+      try {
+        const { data: pos } = await supabase.from('purchase_orders').select('id').eq('supplier_id', id);
+        if (pos && pos.length > 0) {
+          for (const po of pos) {
+            await supabase.from('purchase_order_items').delete().eq('purchase_order_id', po.id);
+          }
+          await supabase.from('purchase_orders').delete().eq('supplier_id', id);
+        }
+      } catch (err) {
+        console.warn('cleanup purchase_orders warning:', err);
+      }
+      try {
+        await supabase.from('supplier_contacts').delete().eq('supplier_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_contacts warning:', err);
+      }
+      try {
+        await supabase.from('supplier_agreements').delete().eq('supplier_id', id);
+      } catch (err) {
+        console.warn('cleanup supplier_agreements warning:', err);
+      }
+      try {
+        await supabase.from('product_supplier_codes').delete().eq('supplier_id', id);
+      } catch (err) {
+        console.warn('cleanup product_supplier_codes warning:', err);
+      }
+      try {
+        await supabase.from('products').update({ main_supplier_id: null }).eq('main_supplier_id', id);
+      } catch (err) {
+        console.warn('cleanup products supplier link warning:', err);
+      }
+      try {
+        await supabase.from('inventory_movements').update({ supplier_id: null }).eq('supplier_id', id);
+      } catch (err) {
+        console.warn('cleanup inventory_movements supplier link warning:', err);
+      }
+
       const { error } = await supabase.from('suppliers').delete().eq('id', id);
       if (error) {
         console.error('Supabase supplier delete error:', error);
@@ -2241,6 +2401,12 @@ class DatabaseEngine {
     }
 
     this.data.suppliers = this.data.suppliers.filter((s) => s.id !== id);
+    this.data.visits = (this.data.visits || []).filter((v) => v.supplier_id !== id);
+    this.data.purchaseOrders = (this.data.purchaseOrders || []).filter((p) => p.supplier_id !== id);
+    this.data.incidents = (this.data.incidents || []).filter((i) => i.supplier_id !== id);
+    this.data.returns = (this.data.returns || []).filter((r) => r.supplier_id !== id);
+    this.data.replacements = (this.data.replacements || []).filter((r) => r.supplier_id !== id);
+
     this.addAuditLog(userId, userName, 'ELIMINACION_PROVEEDOR', 'Proveedores', id, `Proveedor eliminado: ${sup.trade_name || sup.business_name} (${sup.ruc})`);
     this.notify();
     return true;
@@ -2285,6 +2451,12 @@ class DatabaseEngine {
     if (!po) return false;
 
     if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('purchase_order_items').delete().eq('purchase_order_id', id);
+      } catch (err) {
+        console.warn('cleanup purchase_order_items warning:', err);
+      }
+
       const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
       if (error) {
         console.error('Supabase purchase order delete error:', error);
