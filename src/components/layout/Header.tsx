@@ -15,12 +15,10 @@ import {
   ChevronDown,
   Shield,
   Settings,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../context/StoreContext';
 import { ROLE_LABELS } from '../../types/auth';
-import { UserRole } from '../../types/database';
 import { clsx } from 'clsx';
 
 interface HeaderProps {
@@ -30,7 +28,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onToggleMobileMenu }) => {
-  const { user, logout, switchUserRole, allUsers } = useAuth();
+  const { user, logout, allUsers } = useAuth();
   const { settings, notifications, markNotificationAsRead } = useStore();
 
   const [darkMode, setDarkMode] = useState<boolean>(() => {
@@ -309,29 +307,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
                 </button>
               </div>
 
-              {/* Selector de Simulación / Cambio de Rol Activo (Formal y Compacto) */}
-              <div className="my-1.5 mx-1 p-2.5 rounded-lg bg-slate-50/80 dark:bg-slate-850/60 border border-slate-200/70 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Simulación de Rol Activo
-                  </span>
-                  <SlidersHorizontal className="w-3 h-3 text-slate-400" />
-                </div>
-                <select
-                  value={user?.role || 'administrador'}
-                  onChange={(e) => {
-                    switchUserRole(e.target.value as UserRole);
-                    setIsRoleMenuOpen(false);
-                  }}
-                  className="w-full px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
-                >
-                  {(['administrador', 'gerente', 'supervisor', 'cajero', 'encargado_inventario', 'responsable_compras', 'auditor'] as UserRole[]).map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
               {/* Botón Cerrar Sesión Formal */}
               <div className="pt-1 border-t border-slate-100 dark:border-slate-800 px-1 mt-1">
