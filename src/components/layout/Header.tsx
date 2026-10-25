@@ -96,12 +96,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
           </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-[11px] font-medium text-slate-700 dark:text-slate-300">
-          <Building2 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-          <span className="font-semibold truncate max-w-[150px]">{settings.store_name} ({settings.establishment_code})</span>
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50/90 dark:bg-slate-850/70 border border-slate-200/80 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300">
+          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="font-semibold truncate max-w-[220px]">{settings.store_name} ({settings.establishment_code})</span>
           <span className="text-slate-300 dark:text-slate-700">•</span>
-          <span className="inline-flex items-center gap-1 text-[10px] text-blue-700 dark:text-blue-400 font-semibold uppercase tracking-wider shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             SRI En Línea
           </span>
         </div>
@@ -118,35 +118,35 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         {/* Botón Búsqueda Desktop / Tablet */}
         <button
           onClick={onOpenSearch}
-          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-50 dark:bg-slate-850 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs transition-colors border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 truncate"
+          className="hidden sm:flex items-center gap-2.5 px-3.5 h-8.5 rounded-lg bg-slate-50 dark:bg-slate-850/60 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs transition-colors border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 w-56 lg:w-72 shadow-2xs truncate"
         >
           <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <span className="text-slate-500">Buscar producto, visita, venta...</span>
-          <kbd className="hidden lg:inline-block px-1.5 py-0.2 text-[10px] font-mono rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500">
+          <span className="text-slate-500 truncate">Buscar producto, visita, venta...</span>
+          <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-400 ml-auto shrink-0">
             Ctrl+K
           </kbd>
         </button>
       </div>
 
       {/* Acciones Rápidas y Menú de Perfil */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {/* Atajo: Nueva Venta */}
         <button
           onClick={() => onNavigate('pos')}
-          className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white text-xs font-semibold shadow-xs transition-all whitespace-nowrap shrink-0 active:scale-95 cursor-pointer"
+          className="hidden sm:inline-flex items-center gap-2 h-8.5 px-3.5 rounded-lg bg-slate-900 hover:bg-slate-850 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 text-xs font-semibold shadow-xs transition-all whitespace-nowrap shrink-0 active:scale-95 cursor-pointer border border-slate-950/20 dark:border-white/20 tracking-tight"
           title="Acceso directo a Punto de Venta (POS)"
         >
-          <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
+          <ShoppingCart className="w-3.5 h-3.5 shrink-0 stroke-[2.2]" />
           <span>Nueva Venta</span>
         </button>
 
         {/* Atajo: Registrar Visita */}
         <button
           onClick={() => onNavigate('visitas')}
-          className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-xs transition-all whitespace-nowrap shrink-0 active:scale-95 cursor-pointer"
+          className="hidden md:inline-flex items-center gap-2 h-8.5 px-3.5 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-850 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-250 dark:border-slate-700 shadow-xs transition-all whitespace-nowrap shrink-0 active:scale-95 cursor-pointer tracking-tight"
           title="Registrar llegada o visita de proveedor"
         >
-          <Truck className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+          <Truck className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0 stroke-[2]" />
           <span>Registrar Visita</span>
         </button>
 
@@ -233,52 +233,59 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         {/* Separador vertical sutil */}
         <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 mx-0.5 hidden sm:block" />
 
-        {/* Menú Dropdown de Usuario / Administrador General */}
+        {/* Menú Dropdown de Usuario / Perfil Corporativo */}
         <div className="relative" ref={roleRef}>
           <button
             onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
             className={clsx(
-              "flex items-center gap-2 h-8.5 pl-1.5 pr-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none shrink-0",
+              "flex items-center gap-2.5 h-9 pl-1.5 pr-2.5 rounded-lg border text-xs transition-all cursor-pointer select-none shrink-0",
               isRoleMenuOpen
-                ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-650 shadow-xs ring-2 ring-brand-500/10"
-                : "bg-slate-50 hover:bg-slate-100 dark:bg-slate-850 dark:hover:bg-slate-800 border-slate-200/90 dark:border-slate-750 text-slate-700 dark:text-slate-200 shadow-xs"
+                ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 shadow-xs ring-2 ring-slate-400/10"
+                : "bg-white hover:bg-slate-50 dark:bg-slate-850 dark:hover:bg-slate-800 border-slate-200/90 dark:border-slate-750 text-slate-750 dark:text-slate-200 shadow-2xs"
             )}
-            title="Menú de perfil y cuenta"
+            title="Opciones de cuenta y perfil"
           >
-            <div className="w-6 h-6 rounded-md bg-brand-600 text-white flex items-center justify-center text-[11px] font-bold shadow-xs shrink-0">
+            <div className="w-6 h-6 rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center text-[11px] font-bold shadow-xs shrink-0 tracking-tight">
               {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'A'}
             </div>
-            <span className="hidden sm:inline font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
-              {user?.role ? ROLE_LABELS[user.role] : 'Administrador General'}
-            </span>
-            <ChevronDown className={clsx("w-3.5 h-3.5 text-slate-400 dark:text-slate-400 shrink-0 transition-transform duration-200", isRoleMenuOpen && "rotate-180")} />
+            <div className="text-left hidden sm:flex flex-col leading-tight">
+              <span className="font-semibold text-slate-800 dark:text-slate-100 truncate max-w-[130px] text-xs">
+                {user?.full_name || 'Administrador'}
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium tracking-tight">
+                {user?.role ? ROLE_LABELS[user.role] : 'Administrador General'}
+              </span>
+            </div>
+            <ChevronDown className={clsx("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200", isRoleMenuOpen && "rotate-180")} />
           </button>
 
           {isRoleMenuOpen && (
-            <div className="absolute right-0 mt-2 w-72 rounded-xl bg-white dark:bg-slate-900 shadow-modal border border-slate-200 dark:border-slate-800 py-1.5 z-50 animate-slide-up">
-              {/* Tarjeta de Identidad del Usuario */}
-              <div className="px-3.5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'A'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                    {user?.full_name || 'Administrador General'}
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    {user?.email || 'admin@sistema.ec'}
-                  </p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-900/50">
-                      <Shield className="w-2.5 h-2.5" />
-                      {user?.role ? ROLE_LABELS[user.role] : 'Administrador General'}
-                    </span>
+            <div className="absolute right-0 mt-2 w-72 rounded-xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200/90 dark:border-slate-800 p-1.5 z-50 animate-slide-up">
+              {/* Cabecera de Identidad Corporativa */}
+              <div className="p-3 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/60 dark:bg-slate-850/40 rounded-lg mb-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'A'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {user?.full_name || 'Administrador Principal'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      {user?.email || 'admin@sistema.ec'}
+                    </p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                        <Shield className="w-2.5 h-2.5 text-slate-500" />
+                        {user?.role ? ROLE_LABELS[user.role] : 'Administrador General'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Accesos directos del Sistema */}
-              <div className="py-1 px-1">
+              {/* Accesos de Navegación del Sistema */}
+              <div className="py-1 space-y-0.5">
                 <button
                   onClick={() => {
                     setIsRoleMenuOpen(false);
@@ -286,7 +293,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left cursor-pointer"
                 >
-                  <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                  <Settings className="w-4 h-4 text-slate-400 shrink-0" />
                   <span>Configuración del Sistema</span>
                 </button>
 
@@ -297,46 +304,37 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left cursor-pointer"
                 >
-                  <UserCheck className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
-                  <span>Gestión de Usuarios y Roles</span>
+                  <UserCheck className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span>Gestión de Usuarios y Accesos</span>
                 </button>
               </div>
 
-              {/* Simulación y Auditoría de Permisos por Rol */}
-              <div className="my-1 border-t border-slate-100 dark:border-slate-800 pt-1.5 px-1">
-                <div className="px-3 py-1 flex items-center justify-between">
+              {/* Selector de Simulación / Cambio de Rol Activo (Formal y Compacto) */}
+              <div className="my-1.5 mx-1 p-2.5 rounded-lg bg-slate-50/80 dark:bg-slate-850/60 border border-slate-200/70 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Simular Rol Activo
+                    Simulación de Rol Activo
                   </span>
                   <SlidersHorizontal className="w-3 h-3 text-slate-400" />
                 </div>
-                <div className="max-h-40 overflow-y-auto space-y-0.5 px-1 py-1">
-                  {(['administrador', 'gerente', 'supervisor', 'cajero', 'encargado_inventario', 'responsable_compras', 'auditor'] as UserRole[]).map((r) => {
-                    const isActive = user?.role === r;
-                    return (
-                      <button
-                        key={r}
-                        onClick={() => {
-                          switchUserRole(r);
-                          setIsRoleMenuOpen(false);
-                        }}
-                        className={clsx(
-                          'w-full text-left px-2.5 py-1.5 text-xs rounded-md font-medium flex items-center justify-between transition-colors cursor-pointer',
-                          isActive
-                            ? 'text-brand-700 dark:text-brand-300 font-bold bg-brand-50 dark:bg-brand-950/40'
-                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                        )}
-                      >
-                        <span className="truncate">{ROLE_LABELS[r]}</span>
-                        {isActive && <span className="w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-brand-400 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
+                <select
+                  value={user?.role || 'administrador'}
+                  onChange={(e) => {
+                    switchUserRole(e.target.value as UserRole);
+                    setIsRoleMenuOpen(false);
+                  }}
+                  className="w-full px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-400 cursor-pointer"
+                >
+                  {(['administrador', 'gerente', 'supervisor', 'cajero', 'encargado_inventario', 'responsable_compras', 'auditor'] as UserRole[]).map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABELS[r]}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Cerrar Sesión */}
-              <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800 px-1">
+              {/* Botón Cerrar Sesión Formal */}
+              <div className="pt-1 border-t border-slate-100 dark:border-slate-800 px-1 mt-1">
                 <button
                   onClick={async () => {
                     setIsRoleMenuOpen(false);
@@ -344,7 +342,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer text-left"
                 >
-                  <LogOut className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
+                  <LogOut className="w-4 h-4 shrink-0 text-rose-500" />
                   <span>Cerrar Sesión</span>
                 </button>
               </div>
