@@ -12,6 +12,10 @@ import {
   CheckCircle2,
   AlertTriangle,
   Menu,
+  ChevronDown,
+  Shield,
+  Settings,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../context/StoreContext';
@@ -68,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
   const unreadNotifs = notifications.filter((n) => !n.is_read);
 
   return (
-    <header className="min-h-14 pt-[env(safe-area-inset-top,0px)] px-3 sm:px-6 bg-white dark:bg-[#0c1322] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors shadow-subtle overflow-x-hidden">
+    <header className="min-h-14 pt-[env(safe-area-inset-top,0px)] px-3 sm:px-6 bg-white dark:bg-[#0c1322] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 z-30 transition-colors shadow-subtle">
       {/* Botón menú móvil + Local / Sucursal y Búsqueda */}
       <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
         {/* Botón menú hamburguesa en móviles */}
@@ -124,22 +128,25 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         </button>
       </div>
 
-      {/* Acciones Rápidas y Perfil */}
-      <div className="flex items-center gap-2 sm:gap-2.5">
-        {/* Atajos de Acción Rápida */}
+      {/* Acciones Rápidas y Menú de Perfil */}
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Atajo: Nueva Venta */}
         <button
           onClick={() => onNavigate('pos')}
-          className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-subtle border border-slate-950 transition-colors"
+          className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white text-xs font-semibold shadow-xs transition-all whitespace-nowrap shrink-0 active:scale-95 cursor-pointer"
+          title="Acceso directo a Punto de Venta (POS)"
         >
-          <ShoppingCart className="w-3.5 h-3.5" />
+          <ShoppingCart className="w-3.5 h-3.5 shrink-0" />
           <span>Nueva Venta</span>
         </button>
 
+        {/* Atajo: Registrar Visita */}
         <button
           onClick={() => onNavigate('visitas')}
-          className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-300 dark:border-slate-700 shadow-subtle transition-colors"
+          className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-200 dark:border-slate-700 shadow-xs transition-all whitespace-nowrap shrink-0 active:scale-95 cursor-pointer"
+          title="Registrar llegada o visita de proveedor"
         >
-          <Truck className="w-3.5 h-3.5 text-slate-500" />
+          <Truck className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
           <span>Registrar Visita</span>
         </button>
 
@@ -147,14 +154,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setIsNotifOpen(!isNotifOpen)}
-            className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative shrink-0 cursor-pointer"
             title="Notificaciones"
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-4 h-4" />
             {unreadNotifs.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
-                {unreadNotifs.length}
-              </span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
             )}
           </button>
 
@@ -219,81 +224,133 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         {/* Toggle Dark Mode */}
         <button
           onClick={toggleDarkMode}
-          className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
           title={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
         >
           {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* Selector Rápido de Rol (Simulación y Auditoría de Permisos) */}
+        {/* Separador vertical sutil */}
+        <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 mx-0.5 hidden sm:block" />
+
+        {/* Menú Dropdown de Usuario / Administrador General */}
         <div className="relative" ref={roleRef}>
           <button
             onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors shadow-subtle"
-            title="Cambiar rol activo"
+            className={clsx(
+              "flex items-center gap-2 h-8.5 pl-1.5 pr-2.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none shrink-0",
+              isRoleMenuOpen
+                ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-650 shadow-xs ring-2 ring-brand-500/10"
+                : "bg-slate-50 hover:bg-slate-100 dark:bg-slate-850 dark:hover:bg-slate-800 border-slate-200/90 dark:border-slate-750 text-slate-700 dark:text-slate-200 shadow-xs"
+            )}
+            title="Menú de perfil y cuenta"
           >
-            <UserCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span className="hidden sm:inline">{user?.role ? ROLE_LABELS[user.role] : 'Rol'}</span>
+            <div className="w-6 h-6 rounded-md bg-brand-600 text-white flex items-center justify-center text-[11px] font-bold shadow-xs shrink-0">
+              {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'A'}
+            </div>
+            <span className="hidden sm:inline font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+              {user?.role ? ROLE_LABELS[user.role] : 'Administrador General'}
+            </span>
+            <ChevronDown className={clsx("w-3.5 h-3.5 text-slate-400 dark:text-slate-400 shrink-0 transition-transform duration-200", isRoleMenuOpen && "rotate-180")} />
           </button>
 
           {isRoleMenuOpen && (
-            <div className="absolute right-0 mt-2 w-60 rounded-lg bg-white dark:bg-slate-900 shadow-modal border border-slate-200 dark:border-slate-800 py-2 z-50 animate-slide-up">
-              <div className="px-3 pb-2 mb-1 border-b border-slate-100 dark:border-slate-850">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Simulación de Rol Activo
-                </p>
-                <p className="text-xs text-slate-600 dark:text-slate-300">
-                  Evaluar permisos y vistas del sistema:
-                </p>
+            <div className="absolute right-0 mt-2 w-72 rounded-xl bg-white dark:bg-slate-900 shadow-modal border border-slate-200 dark:border-slate-800 py-1.5 z-50 animate-slide-up">
+              {/* Tarjeta de Identidad del Usuario */}
+              <div className="px-3.5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                  {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'A'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {user?.full_name || 'Administrador General'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    {user?.email || 'admin@sistema.ec'}
+                  </p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-900/50">
+                      <Shield className="w-2.5 h-2.5" />
+                      {user?.role ? ROLE_LABELS[user.role] : 'Administrador General'}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {(['administrador', 'gerente', 'supervisor', 'cajero', 'encargado_inventario', 'responsable_compras', 'auditor'] as UserRole[]).map((r) => {
-                const isActive = user?.role === r;
-                return (
-                  <button
-                    key={r}
-                    onClick={() => {
-                      switchUserRole(r);
-                      setIsRoleMenuOpen(false);
-                    }}
-                    className={clsx(
-                      'w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors',
-                      isActive ? 'text-brand-600 dark:text-brand-400 font-bold bg-brand-50/50 dark:bg-brand-950/30' : 'text-slate-700 dark:text-slate-300'
-                    )}
-                  >
-                    <span>{ROLE_LABELS[r]}</span>
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-brand-400" />}
-                  </button>
-                );
-              })}
-
-              <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 px-3">
+              {/* Accesos directos del Sistema */}
+              <div className="py-1 px-1">
                 <button
                   onClick={() => {
-                    logout();
                     setIsRoleMenuOpen(false);
+                    onNavigate('configuracion');
                   }}
-                  className="w-full flex items-center gap-2 py-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 transition-colors"
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <Settings className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                  <span>Configuración del Sistema</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsRoleMenuOpen(false);
+                    onNavigate('usuarios');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-left cursor-pointer"
+                >
+                  <UserCheck className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
+                  <span>Gestión de Usuarios y Roles</span>
+                </button>
+              </div>
+
+              {/* Simulación y Auditoría de Permisos por Rol */}
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800 pt-1.5 px-1">
+                <div className="px-3 py-1 flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Simular Rol Activo
+                  </span>
+                  <SlidersHorizontal className="w-3 h-3 text-slate-400" />
+                </div>
+                <div className="max-h-40 overflow-y-auto space-y-0.5 px-1 py-1">
+                  {(['administrador', 'gerente', 'supervisor', 'cajero', 'encargado_inventario', 'responsable_compras', 'auditor'] as UserRole[]).map((r) => {
+                    const isActive = user?.role === r;
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => {
+                          switchUserRole(r);
+                          setIsRoleMenuOpen(false);
+                        }}
+                        className={clsx(
+                          'w-full text-left px-2.5 py-1.5 text-xs rounded-md font-medium flex items-center justify-between transition-colors cursor-pointer',
+                          isActive
+                            ? 'text-brand-700 dark:text-brand-300 font-bold bg-brand-50 dark:bg-brand-950/40'
+                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        )}
+                      >
+                        <span className="truncate">{ROLE_LABELS[r]}</span>
+                        {isActive && <span className="w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-brand-400 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Cerrar Sesión */}
+              <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800 px-1">
+                <button
+                  onClick={async () => {
+                    setIsRoleMenuOpen(false);
+                    await logout();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer text-left"
+                >
+                  <LogOut className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
                   <span>Cerrar Sesión</span>
                 </button>
               </div>
             </div>
           )}
         </div>
-
-        {/* Botón directo de Cerrar Sesión */}
-        <button
-          onClick={async () => {
-            await logout();
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-xs font-bold text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 transition-all shadow-xs cursor-pointer"
-          title="Cerrar sesión"
-        >
-          <LogOut className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-          <span className="hidden sm:inline">Cerrar Sesión</span>
-        </button>
       </div>
     </header>
   );
