@@ -41,6 +41,7 @@ interface StoreContextType extends DatabaseSnapshot {
   deleteSupplier: (id: string) => Promise<boolean>;
   deleteCustomer: (id: string) => Promise<boolean>;
   deletePurchaseOrder: (id: string) => Promise<boolean>;
+  deleteProfile: (id: string) => Promise<boolean>;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -383,6 +384,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return res;
           } catch (e: any) {
             toast.error(e.message || 'Error al eliminar orden de compra');
+            throw e;
+          }
+        },
+        deleteProfile: async (id: string) => {
+          try {
+            const res = await db.deleteProfile(id, { id: currentUserId, name: currentUserName });
+            setSnapshot(db.getSnapshot());
+            toast.success('Usuario eliminado permanentemente exitosamente.');
+            return res;
+          } catch (e: any) {
+            toast.error(e.message || 'Error al eliminar usuario');
             throw e;
           }
         },

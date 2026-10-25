@@ -626,6 +626,107 @@ class DatabaseEngine {
     return true;
   }
 
+  public async deleteProfile(
+    userId: string,
+    adminUser?: { id: string; name: string }
+  ): Promise<boolean> {
+    const target = this.data.profiles.find((p) => p.id === userId);
+    if (!target) return false;
+
+    if (isSupabaseConfigured && supabase) {
+      const fallbackAdminId = 'd0000000-0000-0000-0000-000000000001';
+      try {
+        await supabase.from('user_permissions').delete().eq('user_id', userId);
+      } catch (err) {
+        console.warn('cleanup user_permissions error:', err);
+      }
+      try {
+        await supabase.from('notifications').delete().eq('user_id', userId);
+      } catch (err) {
+        console.warn('cleanup notifications error:', err);
+      }
+      try {
+        await supabase.from('supplier_visits').update({ receiver_user_id: fallbackAdminId }).eq('receiver_user_id', userId);
+      } catch (err) {
+        console.warn('reassign supplier_visits error:', err);
+      }
+      try {
+        await supabase.from('supplier_incidents').update({ reported_by: fallbackAdminId }).eq('reported_by', userId);
+      } catch (err) {
+        console.warn('reassign supplier_incidents error:', err);
+      }
+      try {
+        await supabase.from('supplier_returns').update({ created_by: fallbackAdminId }).eq('created_by', userId);
+        await supabase.from('supplier_returns').update({ authorized_by: null }).eq('authorized_by', userId);
+      } catch (err) {
+        console.warn('reassign supplier_returns error:', err);
+      }
+      try {
+        await supabase.from('supplier_exchanges').update({ processed_by: fallbackAdminId }).eq('processed_by', userId);
+      } catch (err) {
+        console.warn('reassign supplier_exchanges error:', err);
+      }
+      try {
+        await supabase.from('supplier_replacements').update({ responsible_user_id: fallbackAdminId }).eq('responsible_user_id', userId);
+      } catch (err) {
+        console.warn('reassign supplier_replacements error:', err);
+      }
+      try {
+        await supabase.from('inventory_movements').update({ user_id: fallbackAdminId }).eq('user_id', userId);
+      } catch (err) {
+        console.warn('reassign inventory_movements error:', err);
+      }
+      try {
+        await supabase.from('cash_sessions').update({ user_id: fallbackAdminId }).eq('user_id', userId);
+        await supabase.from('cash_sessions').update({ supervisor_id: null }).eq('supervisor_id', userId);
+      } catch (err) {
+        console.warn('reassign cash_sessions error:', err);
+      }
+      try {
+        await supabase.from('sales').update({ seller_user_id: fallbackAdminId }).eq('seller_user_id', userId);
+      } catch (err) {
+        console.warn('reassign sales error:', err);
+      }
+      try {
+        await supabase.from('purchase_orders').update({ created_by: fallbackAdminId }).eq('created_by', userId);
+        await supabase.from('purchase_orders').update({ approved_by: null }).eq('approved_by', userId);
+      } catch (err) {
+        console.warn('reassign purchase_orders error:', err);
+      }
+      try {
+        await supabase.from('internal_documents').update({ issued_by: fallbackAdminId }).eq('issued_by', userId);
+      } catch (err) {
+        console.warn('reassign internal_documents error:', err);
+      }
+      try {
+        await supabase.from('audit_logs').update({ user_id: fallbackAdminId }).eq('user_id', userId);
+      } catch (err) {
+        console.warn('reassign audit_logs error:', err);
+      }
+
+      const { error } = await supabase.from('profiles').delete().eq('id', userId);
+      if (error) {
+        console.error('Supabase profile delete error:', error);
+        throw new Error(`Error en Supabase al eliminar usuario: ${error.message}`);
+      }
+    }
+
+    this.data.profiles = this.data.profiles.filter((p) => p.id !== userId);
+    this.persist();
+
+    this.addAuditLog(
+      adminUser?.id || 'd0000000-0000-0000-0000-000000000001',
+      adminUser?.name || 'Administrador',
+      'ELIMINACION_USUARIO',
+      'Usuarios & Permisos',
+      userId,
+      `Usuario eliminado permanentemente: ${target.full_name} (${target.email})`
+    );
+
+    this.notify();
+    return true;
+  }
+
   // --- REGLAS DE AUDITORÍA (INMUTABLE EN SUPABASE) ---
   public addAuditLog(
     userId: string,

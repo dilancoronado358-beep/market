@@ -8,15 +8,17 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
-import { UserCog, Plus, ShieldCheck, UserX, UserCheck, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { UserCog, Plus, ShieldCheck, UserX, UserCheck, KeyRound, Eye, EyeOff, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const UsersManagement: React.FC = () => {
-  const { profiles } = useStore();
+  const { profiles, deleteProfile } = useStore();
   const { user, hasPermission } = useAuth();
 
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<UserRole>('cajero');
@@ -123,17 +125,33 @@ export const UsersManagement: React.FC = () => {
     {
       key: 'actions',
       header: 'Acciones',
-      render: (u) => (
-        <Button
-          size="sm"
-          variant={u.is_active ? 'secondary' : 'primary'}
-          icon={u.is_active ? <UserX className="w-3.5 h-3.5 text-rose-500" /> : <UserCheck className="w-3.5 h-3.5" />}
-          onClick={() => toggleUserStatus(u)}
-          disabled={u.id === user?.id}
-        >
-          {u.is_active ? 'Desactivar' : 'Activar'}
-        </Button>
-      ),
+      render: (u) => {
+        const isSelf = u.id === user?.id;
+        return (
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant={u.is_active ? 'secondary' : 'primary'}
+              icon={u.is_active ? <UserX className="w-3.5 h-3.5 text-amber-500" /> : <UserCheck className="w-3.5 h-3.5" />}
+              onClick={() => toggleUserStatus(u)}
+              disabled={isSelf}
+              title={isSelf ? 'No puedes desactivar tu propia cuenta activa' : (u.is_active ? 'Desactivar cuenta' : 'Activar cuenta')}
+            >
+              {u.is_active ? 'Desactivar' : 'Activar'}
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              icon={<Trash2 className="w-3.5 h-3.5" />}
+              onClick={() => setUserToDelete(u)}
+              disabled={isSelf}
+              title={isSelf ? 'No puedes eliminar tu propia cuenta en sesión' : 'Eliminar usuario permanentemente'}
+            >
+              Eliminar
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -259,6 +277,59 @@ export const UsersManagement: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Confirmación de Eliminación Permanente de Usuario */}
+      {userToDelete && (
+        <Modal
+          isOpen={!!userToDelete}
+          onClose={() => !isDeleting && setUserToDelete(null)}
+          title="Confirmar Eliminación Permanente de Usuario"
+          maxWidth="sm"
+        >
+          <div className="space-y-4 py-2">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-rose-900 dark:text-rose-200 space-y-1">
+                <p className="font-bold text-sm">¿Estás seguro de eliminar este usuario?</p>
+                <p>
+                  El usuario <span className="font-bold">{userToDelete.full_name}</span> ({userToDelete.email}) será borrado permanentemente de la base de datos de Supabase.
+                </p>
+                <p className="text-[11px] text-rose-700 dark:text-rose-300">
+                  Perderá inmediatamente el acceso a todos los módulos y funciones del sistema.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                variant="secondary"
+                onClick={() => setUserToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                icon={<Trash2 className="w-4 h-4" />}
+                isLoading={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true);
+                  try {
+                    await deleteProfile(userToDelete.id);
+                    setUserToDelete(null);
+                  } catch (err) {
+                    // El error ya es reportado por toast en StoreContext
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+              >
+                Sí, Eliminar Usuario
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
