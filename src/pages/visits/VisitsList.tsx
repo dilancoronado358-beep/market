@@ -227,7 +227,7 @@ export const VisitsList: React.FC = () => {
       </div>
 
       {/* Modal de Detalle de Visita */}
-      {selectedVisit && (
+      {selectedVisit && selectedVisit.id && (
         <VisitDetailModal
           isOpen={isDetailOpen}
           onClose={() => {
@@ -243,8 +243,10 @@ export const VisitsList: React.FC = () => {
         isOpen={isNewVisitOpen}
         onClose={() => setIsNewVisitOpen(false)}
         onVisitCreated={(v) => {
-          setSelectedVisit(v);
-          setIsDetailOpen(true);
+          if (v && v.id) {
+            setSelectedVisit(v);
+            setIsDetailOpen(true);
+          }
         }}
       />
     </div>

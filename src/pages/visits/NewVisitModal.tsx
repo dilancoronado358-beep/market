@@ -24,29 +24,46 @@ export const NewVisitModal: React.FC<NewVisitModalProps> = ({
   const [reason, setReason] = useState('Entrega regular de mercadería y revisión de inventario');
   const [invoiceRef, setInvoiceRef] = useState('');
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supplierId || !salesRepName.trim()) {
-      toast.error('Seleccione el proveedor e ingrese el nombre del vendedor/transportista');
+    if (!supplierId) {
+      toast.error('Seleccione la empresa proveedora');
+      return;
+    }
+    if (!salesRepName.trim()) {
+      toast.error('Ingrese el nombre del vendedor o transportista');
       return;
     }
 
-    const newVisit = createSupplierVisit({
-      supplier_id: supplierId,
-      sales_rep_name: salesRepName,
-      reason,
-      invoice_or_doc_ref: invoiceRef || undefined,
-      notes: notes || undefined,
-    });
+    setIsSubmitting(true);
+    try {
+      const newVisit = await createSupplierVisit({
+        supplier_id: supplierId,
+        sales_rep_name: salesRepName.trim(),
+        reason: reason.trim(),
+        invoice_or_doc_ref: invoiceRef.trim() || undefined,
+        notes: notes.trim() || undefined,
+      });
 
-    onVisitCreated(newVisit);
-    onClose();
-    // Reset
-    setSupplierId('');
-    setSalesRepName('');
-    setInvoiceRef('');
-    setNotes('');
+      if (newVisit && newVisit.id) {
+        onVisitCreated(newVisit);
+        onClose();
+        // Reset
+        setSupplierId('');
+        setSalesRepName('');
+        setInvoiceRef('');
+        setNotes('');
+      } else {
+        toast.error('No se pudo inicializar la visita. Intente nuevamente.');
+      }
+    } catch (err: any) {
+      console.error('Error al registrar visita:', err);
+      toast.error(err.message || 'Error al iniciar la visita en Supabase');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -58,16 +75,21 @@ export const NewVisitModal: React.FC<NewVisitModalProps> = ({
       maxWidth="2xl"
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} icon={<Truck className="w-4 h-4" />}>
-            Iniciar Visita & Abrir Expediente
+          <Button
+            type="submit"
+            form="form-new-visit"
+            disabled={isSubmitting}
+            icon={<Truck className={`w-4 h-4 ${isSubmitting ? 'animate-bounce' : ''}`} />}
+          >
+            {isSubmitting ? 'Iniciando Expediente...' : 'Iniciar Visita & Abrir Expediente'}
           </Button>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4 py-2">
+      <form id="form-new-visit" onSubmit={handleSubmit} className="space-y-4 py-2">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">

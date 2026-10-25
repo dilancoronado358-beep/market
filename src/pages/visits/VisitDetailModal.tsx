@@ -42,6 +42,8 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({
   onClose,
   visit,
 }) => {
+  if (!visit || !visit.id) return null;
+
   const { user } = useAuth();
   const {
     suppliers,
@@ -66,12 +68,12 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({
     'recepcion' | 'nuevo_producto' | 'retiros' | 'cambios' | 'incidencias' | 'reposiciones' | 'cierre'
   >('recepcion');
 
-  const supplier = suppliers.find((s) => s.id === visit.supplier_id);
-  const itemsOfVisit = visitItems.filter((i) => i.visit_id === visit.id);
-  const incidentsOfVisit = incidents.filter((i) => i.visit_id === visit.id);
-  const returnsOfVisit = returns.filter((r) => r.visit_id === visit.id);
-  const exchangesOfVisit = exchanges.filter((e) => e.visit_id === visit.id);
-  const replacementsOfVisit = replacements.filter((r) => r.origin_visit_id === visit.id);
+  const supplier = suppliers.find((s) => s.id === visit?.supplier_id);
+  const itemsOfVisit = visitItems.filter((i) => i.visit_id === visit?.id);
+  const incidentsOfVisit = incidents.filter((i) => i.visit_id === visit?.id);
+  const returnsOfVisit = returns.filter((r) => r.visit_id === visit?.id);
+  const exchangesOfVisit = exchanges.filter((e) => e.visit_id === visit?.id);
+  const replacementsOfVisit = replacements.filter((r) => r.origin_visit_id === visit?.id);
 
   // Formulario de Recepción de Mercadería
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -132,68 +134,76 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({
   };
 
   // Agregar línea recibida
-  const handleAddReceiptItem = (e: React.FormEvent) => {
+  const handleAddReceiptItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProductId) {
       toast.error('Seleccione un producto para la recepción');
       return;
     }
     const isDamaged = rejectedQty > 0;
-    addVisitReceiptItem(visit.id, {
-      productId: selectedProductId,
-      declaredQty,
-      receivedQty: acceptedQty + rejectedQty,
-      acceptedQty,
-      rejectedQty,
-      unitCost: receiptCost,
-      lotNumber: receiptLot,
-      expirationDate: receiptExpiry,
-      status: isDamaged ? 'dañado' : (acceptedQty === declaredQty ? 'recibido_conforme' : 'recibido_con_diferencias'),
-      differenceReason: differenceReason || (isDamaged ? 'Mercadería dañada o con diferencias' : undefined),
-    });
+    try {
+      await addVisitReceiptItem(visit.id, {
+        productId: selectedProductId,
+        declaredQty,
+        receivedQty: acceptedQty + rejectedQty,
+        acceptedQty,
+        rejectedQty,
+        unitCost: receiptCost,
+        lotNumber: receiptLot,
+        expirationDate: receiptExpiry,
+        status: isDamaged ? 'dañado' : (acceptedQty === declaredQty ? 'recibido_conforme' : 'recibido_con_diferencias'),
+        differenceReason: differenceReason || (isDamaged ? 'Mercadería dañada o con diferencias' : undefined),
+      });
 
-    // Reset
-    setSelectedProductId('');
-    setDeclaredQty(1);
-    setAcceptedQty(1);
-    setRejectedQty(0);
-    setDifferenceReason('');
+      // Reset
+      setSelectedProductId('');
+      setDeclaredQty(1);
+      setAcceptedQty(1);
+      setRejectedQty(0);
+      setDifferenceReason('');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al agregar línea recibida');
+    }
   };
 
   // Crear producto nuevo en la visita
-  const handleCreateProductInVisit = (e: React.FormEvent) => {
+  const handleCreateProductInVisit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!npCode || !npName) {
       toast.error('Código y Nombre son obligatorios');
       return;
     }
 
-    createProductFromVisit(
-      visit.id,
-      {
-        internal_code: npCode,
-        barcode: npBarcode,
-        name: npName,
-        category_id: npCategory || undefined,
-        brand: npBrand,
-        unit_of_measure: npUnit,
-        cost_price: npCost,
-        sale_price: npSalePrice,
-        iva_rate: npIvaRate,
-      },
-      {
-        declaredQty: npDeclaredQty,
-        acceptedQty: npAcceptedQty,
-        rejectedQty: 0,
-        notes: 'Producto nuevo ingresado durante la visita de proveedor',
-      }
-    );
+    try {
+      await createProductFromVisit(
+        visit.id,
+        {
+          internal_code: npCode,
+          barcode: npBarcode,
+          name: npName,
+          category_id: npCategory || undefined,
+          brand: npBrand,
+          unit_of_measure: npUnit,
+          cost_price: npCost,
+          sale_price: npSalePrice,
+          iva_rate: npIvaRate,
+        },
+        {
+          declaredQty: npDeclaredQty,
+          acceptedQty: npAcceptedQty,
+          rejectedQty: 0,
+          notes: 'Producto nuevo ingresado durante la visita de proveedor',
+        }
+      );
 
-    setActiveTab('recepcion');
-    // Reset
-    setNpCode('');
-    setNpBarcode('');
-    setNpName('');
+      setActiveTab('recepcion');
+      // Reset
+      setNpCode('');
+      setNpBarcode('');
+      setNpName('');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al crear producto nuevo en visita');
+    }
   };
 
   // Procesar Retiro de Mercadería
@@ -290,8 +300,8 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Expediente Digital: ${visit.visit_number}`}
-      subtitle={`Proveedor: ${supplier?.trade_name || supplier?.business_name} • Vendedor: ${visit.sales_rep_name}`}
+      title={`Expediente Digital: ${visit?.visit_number || 'Visita'}`}
+      subtitle={`Proveedor: ${supplier?.trade_name || supplier?.business_name || 'Proveedor'} • Vendedor: ${visit?.sales_rep_name || 'N/A'}`}
       maxWidth="5xl"
       footer={
         <div className="flex items-center justify-between w-full">
