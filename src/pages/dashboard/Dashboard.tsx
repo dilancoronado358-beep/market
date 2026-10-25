@@ -47,24 +47,63 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     cashSessions,
   } = useStore();
 
-  // 1. Indicadores de Ventas
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todaySales = sales.filter((s) => s.created_at.startsWith(todayStr) && s.status === 'completada');
-  const todayRevenue = todaySales.reduce((acc, s) => acc + s.total_amount, 0);
-  const totalSalesRevenue = sales
-    .filter((s) => s.status === 'completada')
-    .reduce((acc, s) => acc + s.total_amount, 0);
+  // Utilidad para comparar fechas en horario local del usuario
+  const isSameDay = (dateStr: string | null | undefined, targetDate: Date) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    return (
+      d.getFullYear() === targetDate.getFullYear() &&
+      d.getMonth() === targetDate.getMonth() &&
+      d.getDate() === targetDate.getDate()
+    );
+  };
+
+  const now = new Date();
+
+  // 1. Indicadores de Ventas (solo ventas completadas válidas)
+  const validSales = sales.filter((s) => s.status === 'completada');
+  const todaySales = validSales.filter((s) => isSameDay(s.created_at, now));
+  const todayRevenue = todaySales.reduce((acc, s) => acc + (s.total_amount || 0), 0);
+  const totalSalesRevenue = validSales.reduce((acc, s) => acc + (s.total_amount || 0), 0);
   const avgTicket = todaySales.length > 0 ? todayRevenue / todaySales.length : 0;
+
+  // Comparativa real de ventas con el día anterior
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const yesterdaySales = validSales.filter((s) => isSameDay(s.created_at, yesterday));
+  const yesterdayRevenue = yesterdaySales.reduce((acc, s) => acc + (s.total_amount || 0), 0);
+
+  let salesTrend: { value: number; isPositive: boolean } | undefined = undefined;
+  if (yesterdayRevenue > 0) {
+    const diff = ((todayRevenue - yesterdayRevenue) / yesterdayRevenue) * 100;
+    salesTrend = {
+      value: Math.abs(Number(diff.toFixed(1))),
+      isPositive: diff >= 0,
+    };
+  } else if (todayRevenue > 0) {
+    salesTrend = {
+      value: 100,
+      isPositive: true,
+    };
+  }
 
   // 2. Indicadores de Inventario
   const lowStockProducts = products.filter((p) => p.current_stock <= p.min_stock && p.is_active);
   const zeroStockProducts = products.filter((p) => p.current_stock <= 0 && p.is_active);
-  const totalCostValuation = products.reduce((acc, p) => acc + (p.current_stock * (p.avg_cost || p.cost_price)), 0);
-  const totalRetailValuation = products.reduce((acc, p) => acc + (p.current_stock * p.sale_price), 0);
+  const totalCostValuation = products.reduce((acc, p) => {
+    const stock = Math.max(0, p.current_stock || 0);
+    const cost = p.avg_cost && p.avg_cost > 0 ? p.avg_cost : (p.cost_price || 0);
+    return acc + (stock * cost);
+  }, 0);
+  const totalRetailValuation = products.reduce((acc, p) => {
+    const stock = Math.max(0, p.current_stock || 0);
+    const price = p.sale_price || 0;
+    return acc + (stock * price);
+  }, 0);
   const totalQuarantineUnits = products.reduce((acc, p) => acc + (p.quarantine_stock || 0), 0);
 
   // 3. Indicadores de Proveedores y Visitas
-  const todayVisits = visits.filter((v) => v.check_in_time.startsWith(todayStr));
+  const todayVisits = visits.filter((v) => isSameDay(v.check_in_time, now));
   const activeVisits = visits.filter((v) => v.status === 'en_curso' || v.status === 'en_recepcion');
   const pendingReplacements = replacements.filter((r) => r.status === 'pendiente_entrega' || r.status === 'solicitada');
   const openIncidents = incidents.filter((i) => i.status !== 'resuelto' && i.status !== 'cerrado_sin_compensacion');
@@ -74,22 +113,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const failedEmails = emailQueue.filter((e) => e.status === 'fallido');
   const activeCashSession = cashSessions.find((cs) => cs.status === 'abierta');
 
-  // Datos para Gráfico de Ventas de la Semana
-  const weeklyData = [
-    { day: 'Lun', total: 145.20 },
-    { day: 'Mar', total: 180.50 },
-    { day: 'Mié', total: 210.00 },
-    { day: 'Jue', total: todayRevenue > 0 ? todayRevenue : 195.40 },
-    { day: 'Vie', total: 280.00 },
-    { day: 'Sáb', total: 340.50 },
-    { day: 'Dom', total: 290.00 },
-  ];
+  // 5. Datos Reales para Gráfico de Ventas de la Semana en Curso (Lunes a Domingo)
+  const currentDayOfWeek = now.getDay();
+  const mondayOffset = (currentDayOfWeek + 6) % 7;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - mondayOffset);
+  monday.setHours(0, 0, 0, 0);
 
-  // Métodos de Pago
+  const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  const weeklyData = dayNames.map((dayName, idx) => {
+    const targetDate = new Date(monday);
+    targetDate.setDate(monday.getDate() + idx);
+    const daySales = validSales.filter((s) => isSameDay(s.created_at, targetDate));
+    const total = daySales.reduce((acc, s) => acc + (s.total_amount || 0), 0);
+    return {
+      day: dayName,
+      date: `${targetDate.getDate()}/${targetDate.getMonth() + 1}`,
+      total: Number(total.toFixed(2)),
+      count: daySales.length,
+    };
+  });
+
+  // 6. Métodos de Pago Reales (solo ventas completadas)
+  const cashSalesCount = validSales.filter((s) => s.payment_method === 'efectivo').length;
+  const cardSalesCount = validSales.filter((s) => s.payment_method === 'tarjeta').length;
+  const transferSalesCount = validSales.filter((s) => s.payment_method === 'transferencia').length;
+  const totalPaymentOperations = cashSalesCount + cardSalesCount + transferSalesCount;
+
   const paymentData = [
-    { name: 'Efectivo', value: sales.filter((s) => s.payment_method === 'efectivo').length || 1, color: '#0f172a' },
-    { name: 'Tarjeta', value: sales.filter((s) => s.payment_method === 'tarjeta').length || 0, color: '#1d4ed8' },
-    { name: 'Transferencia', value: sales.filter((s) => s.payment_method === 'transferencia').length || 0, color: '#64748b' },
+    { name: 'Efectivo', value: cashSalesCount, color: '#0f172a' },
+    { name: 'Tarjeta', value: cardSalesCount, color: '#1d4ed8' },
+    { name: 'Transferencia', value: transferSalesCount, color: '#64748b' },
   ];
 
   return (
@@ -147,7 +201,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           value={`$${todayRevenue.toFixed(2)}`}
           subtitle={`${todaySales.length} transacciones registradas`}
           icon={<DollarSign className="w-5 h-5" />}
-          trend={{ value: 12.5, isPositive: true }}
+          trend={salesTrend}
           onClick={() => onNavigate('ventas')}
         />
 
@@ -243,7 +297,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} tickLine={false} />
                 <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} tickFormatter={(val) => `$${val}`} />
                 <Tooltip
-                  formatter={(value: any) => [`$${Number(value).toFixed(2)}`, 'Ventas']}
+                  formatter={(value: any, _name: any, item: any) => {
+                    const count = item?.payload?.count || 0;
+                    return [`$${Number(value).toFixed(2)} (${count} venta${count === 1 ? '' : 's'})`, 'Ventas'];
+                  }}
                   contentStyle={{
                     backgroundColor: '#0f172a',
                     border: '1px solid #1e293b',
@@ -264,33 +321,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             Ventas por Método de Pago
           </h2>
           <div className="h-44 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={paymentData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {paymentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(val: any) => [val, 'Operaciones']}
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #1e293b',
-                    borderRadius: '6px',
-                    color: '#fff',
-                    fontSize: '11px',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {totalPaymentOperations > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={paymentData.filter((p) => p.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {paymentData.filter((p) => p.value > 0).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: any) => [val, 'Operaciones']}
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      border: '1px solid #1e293b',
+                      borderRadius: '6px',
+                      color: '#fff',
+                      fontSize: '11px',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-center text-xs text-slate-400 py-6">
+                Sin ventas registradas
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
