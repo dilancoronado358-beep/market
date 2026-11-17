@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
+import { DEFAULT_LOGO_URL } from '../../lib/databaseState';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
-import { Settings, Save, Building, ShieldCheck, DollarSign } from 'lucide-react';
+import { Save, Building, ShieldCheck, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const SystemSettings: React.FC = () => {
@@ -18,9 +19,25 @@ export const SystemSettings: React.FC = () => {
   const [email, setEmail] = useState(settings.email);
   const [estabCode, setEstabCode] = useState(settings.establishment_code);
   const [emiCode, setEmiCode] = useState(settings.emission_point_code);
+  const [logoUrl, setLogoUrl] = useState(settings.logo_url || DEFAULT_LOGO_URL);
   const [ivaRate, setIvaRate] = useState(settings.default_iva_rate);
   const [allowNegative, setAllowNegative] = useState(settings.allow_negative_stock);
   const [requireSupervisor, setRequireSupervisor] = useState(settings.require_supervisor_for_discount);
+
+  useEffect(() => {
+    setStoreName(settings.store_name);
+    setTradeName(settings.trade_name);
+    setRuc(settings.ruc);
+    setAddress(settings.address);
+    setPhone(settings.phone);
+    setEmail(settings.email);
+    setEstabCode(settings.establishment_code);
+    setEmiCode(settings.emission_point_code);
+    setLogoUrl(settings.logo_url || DEFAULT_LOGO_URL);
+    setIvaRate(settings.default_iva_rate);
+    setAllowNegative(settings.allow_negative_stock);
+    setRequireSupervisor(settings.require_supervisor_for_discount);
+  }, [settings]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +55,7 @@ export const SystemSettings: React.FC = () => {
       email,
       establishment_code: estabCode,
       emission_point_code: emiCode,
+      logo_url: logoUrl.trim() || DEFAULT_LOGO_URL,
       default_iva_rate: ivaRate,
       allow_negative_stock: allowNegative,
       require_supervisor_for_discount: requireSupervisor,
@@ -124,6 +142,37 @@ export const SystemSettings: React.FC = () => {
                 onChange={(e) => setEmiCode(e.target.value)}
                 required
               />
+            </div>
+
+            {/* Logo Insignia Corporativo */}
+            <div className="sm:col-span-2 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-900 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+                <img
+                  src={logoUrl || DEFAULT_LOGO_URL}
+                  alt="Vista previa Logo Insignia"
+                  className="w-full h-full object-cover rounded-xl"
+                />
+              </div>
+              <div className="flex-1 w-full space-y-2">
+                <Input
+                  label="URL del Logo Insignia"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder={DEFAULT_LOGO_URL}
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-slate-400">
+                    Visible en login, barra lateral, cabecera y panel ejecutivo.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLogoUrl(DEFAULT_LOGO_URL)}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Restaurar Logo Oficial
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

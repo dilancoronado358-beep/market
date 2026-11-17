@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useStore } from '../../context/StoreContext';
+import { Sale, Product, SupplierVisit } from '../../types/database';
 import { Button } from '../../components/common/Button';
+import { Badge } from '../../components/common/Badge';
+import { DataTable, Column } from '../../components/common/DataTable';
 import { StatCard } from '../../components/common/StatCard';
 import { exportToExcel, exportToCsv } from '../../lib/excelUtils';
 import {
@@ -87,14 +90,143 @@ export const ReportsView: React.FC = () => {
       });
     }
 
-    if (format === 'excel') {
-      exportToExcel(exportData, filename);
-      toast.success('Reporte exportado exitosamente a Excel (.xlsx)');
-    } else {
-      exportToCsv(exportData, filename);
-      toast.success('Reporte exportado exitosamente a CSV (.csv)');
+    try {
+      if (format === 'excel') {
+        exportToExcel(exportData, filename);
+        toast.success('Reporte exportado exitosamente a Excel (.xlsx)');
+      } else {
+        exportToCsv(exportData, filename);
+        toast.success('Reporte exportado exitosamente a CSV (.csv)');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'No hay datos disponibles para exportar.');
     }
   };
+
+  const salesColumns: Column<Sale>[] = [
+    {
+      key: 'sale_number',
+      header: 'N° Venta',
+      sortable: true,
+      render: (s) => <span className="font-mono font-bold text-slate-900 dark:text-white">{s.sale_number}</span>,
+    },
+    {
+      key: 'created_at',
+      header: 'Fecha',
+      sortable: true,
+      render: (s) => <span className="text-xs text-slate-500">{new Date(s.created_at).toLocaleString('es-EC')}</span>,
+    },
+    {
+      key: 'customer_name',
+      header: 'Cliente',
+      sortable: true,
+      render: (s) => <span className="font-medium text-slate-800 dark:text-slate-200">{s.customer_name || 'CONSUMIDOR FINAL'}</span>,
+    },
+    {
+      key: 'payment_method',
+      header: 'Método Pago',
+      render: (s) => <span className="capitalize font-semibold text-xs">{s.payment_method}</span>,
+    },
+    {
+      key: 'total_amount',
+      header: 'Total',
+      sortable: true,
+      render: (s) => <span className="font-mono font-bold">${s.total_amount.toFixed(2)}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Estado',
+      render: (s) => (
+        <Badge variant={s.status === 'completada' ? 'success' : 'danger'}>
+          {s.status.toUpperCase()}
+        </Badge>
+      ),
+    },
+  ];
+
+  const inventoryColumns: Column<Product>[] = [
+    {
+      key: 'internal_code',
+      header: 'Código',
+      sortable: true,
+      render: (p) => <span className="font-mono font-bold">{p.internal_code}</span>,
+    },
+    {
+      key: 'name',
+      header: 'Producto',
+      sortable: true,
+      render: (p) => <span className="font-semibold text-slate-800 dark:text-slate-100">{p.name}</span>,
+    },
+    {
+      key: 'current_stock',
+      header: 'Stock Actual',
+      sortable: true,
+      render: (p) => (
+        <span className="font-mono font-bold">
+          {p.current_stock} {p.unit_of_measure}
+        </span>
+      ),
+    },
+    {
+      key: 'avg_cost',
+      header: 'Costo Prom.',
+      sortable: true,
+      render: (p) => <span className="font-mono">${(p.avg_cost || p.cost_price).toFixed(2)}</span>,
+    },
+    {
+      key: 'sale_price',
+      header: 'PVP',
+      sortable: true,
+      render: (p) => <span className="font-mono font-semibold">${p.sale_price.toFixed(2)}</span>,
+    },
+    {
+      key: 'valuation',
+      header: 'Valor Total Costo',
+      render: (p) => (
+        <span className="font-mono font-bold text-slate-900 dark:text-white">
+          ${(p.current_stock * (p.avg_cost || p.cost_price)).toFixed(2)}
+        </span>
+      ),
+    },
+  ];
+
+  const supplierVisitColumns: Column<SupplierVisit>[] = [
+    {
+      key: 'visit_number',
+      header: 'N° Visita',
+      sortable: true,
+      render: (v) => <span className="font-mono font-bold">{v.visit_number}</span>,
+    },
+    {
+      key: 'supplier_id',
+      header: 'Proveedor',
+      render: (v) => {
+        const sup = suppliers.find((s) => s.id === v.supplier_id);
+        return <span className="font-semibold">{sup?.trade_name || sup?.business_name || 'Proveedor'}</span>;
+      },
+    },
+    {
+      key: 'sales_rep_name',
+      header: 'Vendedor / Chofer',
+      sortable: true,
+      render: (v) => <span>{v.sales_rep_name}</span>,
+    },
+    {
+      key: 'check_in_time',
+      header: 'Fecha Llegada',
+      sortable: true,
+      render: (v) => <span className="text-xs text-slate-500">{new Date(v.check_in_time).toLocaleString('es-EC')}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Estado',
+      render: (v) => (
+        <Badge variant={v.status === 'finalizada' ? 'success' : v.has_incidents ? 'danger' : 'info'}>
+          {v.status.replace('_', ' ').toUpperCase()}
+        </Badge>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -181,6 +313,16 @@ export const ReportsView: React.FC = () => {
               icon={<TrendingUp className="w-5 h-5" />}
             />
           </div>
+
+          <div className="glass-card p-6 border border-slate-200/80 dark:border-slate-800">
+            <DataTable
+              columns={salesColumns}
+              data={sales}
+              searchPlaceholder="Buscar en reporte de ventas..."
+              searchableKeys={['sale_number', 'customer_name', 'payment_method']}
+              emptyMessage="No hay ventas registradas para mostrar en el reporte."
+            />
+          </div>
         </div>
       )}
 
@@ -208,6 +350,16 @@ export const ReportsView: React.FC = () => {
               iconBg="bg-emerald-500/10 text-emerald-600"
             />
           </div>
+
+          <div className="glass-card p-6 border border-slate-200/80 dark:border-slate-800">
+            <DataTable
+              columns={inventoryColumns}
+              data={products}
+              searchPlaceholder="Buscar producto en reporte de inventario..."
+              searchableKeys={['internal_code', 'name', 'brand']}
+              emptyMessage="No hay productos registrados para valorar."
+            />
+          </div>
         </div>
       )}
 
@@ -233,6 +385,16 @@ export const ReportsView: React.FC = () => {
               subtitle="Visitas con reclamos o daños"
               icon={<Truck className="w-5 h-5" />}
               iconBg="bg-rose-500/10 text-rose-600"
+            />
+          </div>
+
+          <div className="glass-card p-6 border border-slate-200/80 dark:border-slate-800">
+            <DataTable
+              columns={supplierVisitColumns}
+              data={visits}
+              searchPlaceholder="Buscar visita o representante..."
+              searchableKeys={['visit_number', 'sales_rep_name', 'invoice_or_doc_ref']}
+              emptyMessage="No hay visitas de proveedores registradas para el reporte."
             />
           </div>
         </div>

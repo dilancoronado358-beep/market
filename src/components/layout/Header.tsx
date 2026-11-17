@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStore } from '../../context/StoreContext';
+import { DEFAULT_LOGO_URL } from '../../lib/databaseState';
 import { ROLE_LABELS } from '../../types/auth';
 import { clsx } from 'clsx';
 
@@ -85,9 +86,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         {/* Logo y título compacto en móvil */}
         <div className="flex lg:hidden items-center gap-1.5 shrink-0">
           <img
-            src="https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png"
-            alt="Logo"
-            className="w-6 h-6 object-contain rounded bg-slate-900 p-0.5"
+            src={settings.logo_url || DEFAULT_LOGO_URL}
+            alt="Logo Insignia"
+            className="w-6 h-6 object-cover rounded bg-slate-900 p-0.5"
           />
           <span className="font-extrabold text-xs tracking-tight text-slate-900 dark:text-white sm:inline hidden">
             POS Ecuador
@@ -95,6 +96,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         </div>
 
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50/90 dark:bg-slate-850/70 border border-slate-200/80 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300">
+          <img
+            src={settings.logo_url || DEFAULT_LOGO_URL}
+            alt="Logo Insignia"
+            className="w-5 h-5 object-cover rounded bg-slate-900 p-0.5 shrink-0"
+          />
           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           <span className="font-semibold truncate max-w-[220px]">{settings.store_name} ({settings.establishment_code})</span>
           <span className="text-slate-300 dark:text-slate-700">•</span>

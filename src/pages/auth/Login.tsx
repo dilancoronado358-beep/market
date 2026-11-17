@@ -107,9 +107,9 @@ export const Login: React.FC = () => {
           {/* Logo Corporativo */}
           <div className="flex items-center gap-3.5">
             <img
-              src="https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png"
+              src="https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg"
               alt="ERP / POS Ecuador"
-              className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-2xl shadow-xl ring-2 ring-white/30 bg-white/10 backdrop-blur-md p-1 shrink-0"
+              className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-2xl shadow-xl ring-2 ring-white/30 bg-white/10 backdrop-blur-md p-0.5 shrink-0"
             />
             <div>
               <span className="text-lg sm:text-2xl font-black tracking-tight text-white block">

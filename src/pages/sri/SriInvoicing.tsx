@@ -26,8 +26,11 @@ export const SriInvoicing: React.FC = () => {
 
   const [selectedDoc, setSelectedDoc] = useState<ElectronicDocument | null>(null);
   const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'facturas' | 'configuracion'>('facturas');
   const [environment, setEnvironment] = useState<'1' | '2'>(settings.sri_environment);
+  const [selectedSaleId, setSelectedSaleId] = useState<string>('');
+
+  const completedSales = sales.filter((s) => s.status === 'completada');
+  const targetSaleId = selectedSaleId || completedSales[0]?.id || '';
 
   // Emitir Factura Electrónica SRI desde una venta reciente
   const handleEmitSriInvoice = (saleId: string) => {
@@ -329,15 +332,29 @@ export const SriInvoicing: React.FC = () => {
           </div>
         </div>
 
-        {sales.length > 0 && (
-          <Button
-            size="sm"
-            variant="primary"
-            icon={<FileCheck className="w-4 h-4" />}
-            onClick={() => handleEmitSriInvoice(sales[0].id)}
-          >
-            Facturar Venta Reciente ({sales[0].sale_number})
-          </Button>
+        {completedSales.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <select
+              value={targetSaleId}
+              onChange={(e) => setSelectedSaleId(e.target.value)}
+              className="input-field py-1.5 text-xs min-w-[230px]"
+              aria-label="Seleccionar venta a facturar"
+            >
+              {completedSales.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.sale_number} — {s.customer_name || 'CONSUMIDOR FINAL'} (${s.total_amount.toFixed(2)})
+                </option>
+              ))}
+            </select>
+            <Button
+              size="sm"
+              variant="primary"
+              icon={<FileCheck className="w-4 h-4" />}
+              onClick={() => targetSaleId && handleEmitSriInvoice(targetSaleId)}
+            >
+              Emitir Factura SRI
+            </Button>
+          </div>
         )}
       </div>
 

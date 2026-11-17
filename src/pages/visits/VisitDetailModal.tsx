@@ -42,8 +42,6 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({
   onClose,
   visit,
 }) => {
-  if (!visit || !visit.id) return null;
-
   const { user } = useAuth();
   const {
     suppliers,
@@ -121,8 +119,16 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({
   });
   const [repNotes, setRepNotes] = useState('');
 
+  // Formulario de Reporte de Incidencia / Producto Dañado
+  const [incProductId, setIncProductId] = useState('');
+  const [incAffectedQty, setIncAffectedQty] = useState<number>(1);
+  const [incDamageReason, setIncDamageReason] = useState('');
+  const [incLotNumber, setIncLotNumber] = useState('');
+
   // Cierre de Visita
   const [closingNotes, setClosingNotes] = useState('');
+
+  if (!visit || !visit.id) return null;
 
   // Manejador selección de producto para auto-cargar costo
   const handleSelectProduct = (prodId: string) => {
@@ -270,6 +276,37 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({
     setRepProdId('');
     setRepQty(1);
     setRepNotes('');
+  };
+
+  // Reportar Incidencia de Producto Dañado
+  const handleReportIncident = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!incProductId) {
+      toast.error('Seleccione el producto afectado');
+      return;
+    }
+    if (!incDamageReason.trim()) {
+      toast.error('Indique el motivo o descripción del daño');
+      return;
+    }
+
+    const prod = products.find((p) => p.id === incProductId);
+    const estimatedValue = Number((incAffectedQty * (prod?.cost_price || 0)).toFixed(2));
+
+    reportSupplierIncident({
+      visit_id: visit.id,
+      supplier_id: visit.supplier_id,
+      product_id: incProductId,
+      affected_qty: incAffectedQty,
+      damage_reason: incDamageReason.trim(),
+      estimated_value: estimatedValue,
+      lot_number: incLotNumber.trim() || undefined,
+    });
+
+    setIncProductId('');
+    setIncAffectedQty(1);
+    setIncDamageReason('');
+    setIncLotNumber('');
   };
 
   // Descargar Acta en PDF
@@ -972,7 +1009,88 @@ export const VisitDetailModal: React.FC<VisitDetailModalProps> = ({
 
         {/* 5. TAB: PRODUCTOS DAÑADOS / INCIDENCIAS */}
         {activeTab === 'incidencias' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {visit.status !== 'finalizada' && (
+              <form onSubmit={handleReportIncident} className="p-4 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/30 dark:bg-rose-950/20 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                    Reportar Incidencia / Producto Dañado en Visita
+                  </h4>
+                  <span className="text-[11px] text-slate-400">
+                    Genera notificación automática y respaldo de reclamo al proveedor
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Producto Afectado *
+                    </label>
+                    <select
+                      value={incProductId}
+                      onChange={(e) => setIncProductId(e.target.value)}
+                      className="input-field"
+                      required
+                    >
+                      <option value="">-- Seleccionar Producto --</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} ({p.internal_code}) — Costo: ${p.cost_price.toFixed(2)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Cantidad Dañada *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={incAffectedQty}
+                      onChange={(e) => setIncAffectedQty(parseInt(e.target.value) || 1)}
+                      className="input-field font-bold text-rose-600"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Lote (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: L-2026-A"
+                      value={incLotNumber}
+                      onChange={(e) => setIncLotNumber(e.target.value)}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Motivo / Descripción del Daño *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Envase abollado, sello de seguridad roto, producto próximo a caducar..."
+                    value={incDamageReason}
+                    onChange={(e) => setIncDamageReason(e.target.value)}
+                    className="input-field"
+                    required
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button type="submit" variant="danger" size="sm" icon={<AlertTriangle className="w-4 h-4" />}>
+                    Reportar Incidencia
+                  </Button>
+                </div>
+              </form>
+            )}
+
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold uppercase tracking-wider text-rose-600">
                 Incidencias Registradas de Mercadería Dañada

@@ -7,16 +7,17 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { Modal } from '../../components/common/Modal';
 import { Input } from '../../components/common/Input';
-import { FileSpreadsheet, Plus, CheckCircle, Clock, Truck, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, Plus, CheckCircle, Clock, Truck, Trash2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { db } from '../../lib/databaseState';
 
 export const PurchaseOrdersList: React.FC = () => {
-  const { purchaseOrders, suppliers, products, deletePurchaseOrder } = useStore();
+  const { purchaseOrders, suppliers, products, createPurchaseOrder, deletePurchaseOrder } = useStore();
   const { user, hasPermission } = useAuth();
 
   const [orderToDelete, setOrderToDelete] = useState<PurchaseOrder | null>(null);
+  const [orderToView, setOrderToView] = useState<PurchaseOrder | null>(null);
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [expectedDate, setExpectedDate] = useState(() => {
     const d = new Date();
@@ -43,7 +44,7 @@ export const PurchaseOrdersList: React.FC = () => {
     setAddItemQty(10);
   };
 
-  const handleCreateOrder = (e: React.FormEvent) => {
+  const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSupplierId) {
       toast.error('Seleccione un proveedor');
@@ -62,38 +63,45 @@ export const PurchaseOrdersList: React.FC = () => {
     const orderCount = purchaseOrders.length + 1;
     const orderNumber = `OC-${new Date().getFullYear()}-${String(orderCount).padStart(4, '0')}`;
 
-    db.createPurchaseOrder({
-      order_number: orderNumber,
-      supplier_id: selectedSupplierId,
-      supplier_name: supplier?.trade_name || supplier?.business_name,
-      created_by: user?.id && user.id.length > 20 ? user.id : 'd0000000-0000-0000-0000-000000000001',
-      status: 'aprobada',
-      expected_date: expectedDate,
-      subtotal,
-      tax_amount: tax,
-      total_amount: total,
-      notes: orderNotes,
-      items: orderItems.map((i) => {
-        const prod = products.find((p) => p.id === i.productId);
-        return {
-          id: `poi-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          order_id: '',
-          product_id: i.productId,
-          product_name: prod?.name,
-          quantity_ordered: i.qty,
-          quantity_received: 0,
-          unit_cost: i.unitCost,
-          total_cost: i.qty * i.unitCost,
-          created_at: new Date().toISOString(),
-        };
-      }),
-    });
+    setIsSubmitting(true);
+    try {
+      await createPurchaseOrder({
+        order_number: orderNumber,
+        supplier_id: selectedSupplierId,
+        supplier_name: supplier?.trade_name || supplier?.business_name,
+        created_by: user?.id && user.id.length > 20 ? user.id : 'd0000000-0000-0000-0000-000000000001',
+        status: 'aprobada',
+        expected_date: expectedDate,
+        subtotal,
+        tax_amount: tax,
+        total_amount: total,
+        notes: orderNotes,
+        items: orderItems.map((i) => {
+          const prod = products.find((p) => p.id === i.productId);
+          return {
+            id: `poi-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            order_id: '',
+            product_id: i.productId,
+            product_name: prod?.name,
+            quantity_ordered: i.qty,
+            quantity_received: 0,
+            unit_cost: i.unitCost,
+            total_cost: i.qty * i.unitCost,
+            created_at: new Date().toISOString(),
+          };
+        }),
+      });
 
-    toast.success(`Orden de Compra ${orderNumber} generada y aprobada.`);
-    setIsNewOrderModalOpen(false);
-    // Reset
-    setSelectedSupplierId('');
-    setOrderItems([]);
+      setIsNewOrderModalOpen(false);
+      // Reset
+      setSelectedSupplierId('');
+      setOrderItems([]);
+      setOrderNotes('');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al registrar orden de compra');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const columns: Column<PurchaseOrder>[] = [
@@ -162,6 +170,15 @@ export const PurchaseOrdersList: React.FC = () => {
       header: 'Acciones',
       render: (o) => (
         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={<Eye className="w-3.5 h-3.5" />}
+            onClick={() => setOrderToView(o)}
+            title="Ver detalle de orden de compra"
+          >
+            Detalle
+          </Button>
           <Button
             size="sm"
             variant="danger"
@@ -261,10 +278,10 @@ export const PurchaseOrdersList: React.FC = () => {
         maxWidth="3xl"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setIsNewOrderModalOpen(false)}>
+            <Button variant="secondary" onClick={() => setIsNewOrderModalOpen(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateOrder} icon={<Plus className="w-4 h-4" />}>
+            <Button onClick={handleCreateOrder} isLoading={isSubmitting} icon={<Plus className="w-4 h-4" />}>
               Aprobar & Generar Orden Oficial
             </Button>
           </>
@@ -484,6 +501,83 @@ export const PurchaseOrdersList: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Detalle de Orden de Compra */}
+      {orderToView && (
+        <Modal
+          isOpen={Boolean(orderToView)}
+          onClose={() => setOrderToView(null)}
+          title={`Detalle de Orden: ${orderToView.order_number}`}
+          subtitle={`Proveedor: ${orderToView.supplier_name || 'Proveedor'} • Fecha Prevista: ${orderToView.expected_date || 'Inmediata'}`}
+          maxWidth="2xl"
+          footer={
+            <Button variant="secondary" onClick={() => setOrderToView(null)}>
+              Cerrar
+            </Button>
+          }
+        >
+          <div className="space-y-4 py-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
+              <div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 block">Estado</span>
+                <span className="font-bold text-slate-900 dark:text-white uppercase">{orderToView.status.replace('_', ' ')}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 block">Subtotal</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">${Number(orderToView.subtotal || 0).toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 block">IVA 15%</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">${Number(orderToView.tax_amount || 0).toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 block">Total</span>
+                <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400">${Number(orderToView.total_amount || 0).toFixed(2)}</span>
+              </div>
+            </div>
+
+            {orderToView.notes && (
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">Observaciones</span>
+                <p className="text-slate-700 dark:text-slate-300">{orderToView.notes}</p>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+              <table className="w-full text-left text-xs divide-y divide-slate-200 dark:divide-slate-800">
+                <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                  <tr>
+                    <th className="px-3 py-2">Producto</th>
+                    <th className="px-3 py-2 text-center">Cant. Solicitada</th>
+                    <th className="px-3 py-2 text-right">Costo Unit.</th>
+                    <th className="px-3 py-2 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                  {orderToView.items && orderToView.items.length > 0 ? (
+                    orderToView.items.map((it, idx) => (
+                      <tr key={it.id || idx}>
+                        <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-100">
+                          {it.product_name || products.find((p) => p.id === it.product_id)?.name || 'Producto'}
+                        </td>
+                        <td className="px-3 py-2 text-center font-mono font-bold">{it.quantity_ordered}</td>
+                        <td className="px-3 py-2 text-right font-mono">${Number(it.unit_cost || 0).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-mono font-bold">${Number(it.total_cost || 0).toFixed(2)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">
+                        Sin detalle de líneas adjunto en este registro.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Modal Confirmación de Eliminación de Orden de Compra */}
       {orderToDelete && (

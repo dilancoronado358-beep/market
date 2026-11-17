@@ -89,7 +89,7 @@ export const PwaInstallPrompt: React.FC = () => {
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-emerald-500 p-0.5 shrink-0 shadow-md">
                 <img
-                  src="/pwa-icon-192.png"
+                  src="https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg"
                   alt="App Icon"
                   className="w-full h-full object-cover rounded-[10px]"
                 />

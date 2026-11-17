@@ -33,6 +33,9 @@ import {
 } from '../types/database';
 import { supabase, isSupabaseConfigured } from './supabase';
 
+// Logo insignia oficial del sistema
+export const DEFAULT_LOGO_URL = 'https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg';
+
 // Generador de UUIDs estándar versión 4 para llaves primarias PostgreSQL de Supabase
 export const generateUUID = (): string => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -94,7 +97,7 @@ export const cleanZeroData: DatabaseSnapshot = {
     allow_negative_stock: false,
     require_supervisor_for_discount: true,
     max_cashier_discount: 5.0,
-    logo_url: 'https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png',
+    logo_url: DEFAULT_LOGO_URL,
   },
   profiles: [
     {
@@ -227,7 +230,48 @@ export const cleanZeroData: DatabaseSnapshot = {
   internalDocs: [],
   purchaseOrders: [],
   emailQueue: [],
-  automations: [],
+  automations: [
+    {
+      id: 'auto-rule-1',
+      name: 'Alerta de Stock Crítico en Kardex',
+      event_trigger: 'inventory.low_stock',
+      conditions: { threshold: 'current_stock <= min_stock' },
+      action_type: 'notify_and_alert',
+      action_payload: { channel: 'in_app', severity: 'warning' },
+      is_active: true,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'auto-rule-2',
+      name: 'Seguimiento de Reposiciones de Proveedores',
+      event_trigger: 'supplier.replacement_due',
+      conditions: { status: 'pendiente_entrega' },
+      action_type: 'notify_supervisor',
+      action_payload: { channel: 'in_app', escalate: true },
+      is_active: true,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'auto-rule-3',
+      name: 'Envío Automático de Acta Digital de Visita',
+      event_trigger: 'visit.closed',
+      conditions: { has_supplier_email: true },
+      action_type: 'enqueue_email_acta',
+      action_payload: { template: 'acta_visita' },
+      is_active: true,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 'auto-rule-4',
+      name: 'Auditoría de Diferencias en Arqueo de Caja',
+      event_trigger: 'cash.session_closed_diff',
+      conditions: { difference_not_zero: true },
+      action_type: 'log_audit_alert',
+      action_payload: { status: 'auditada', notify_admin: true },
+      is_active: true,
+      created_at: new Date().toISOString(),
+    },
+  ],
   notifications: [],
   auditLogs: [],
 };
@@ -365,11 +409,36 @@ class DatabaseEngine {
       }
       if (saleItemsData) this.data.saleItems = saleItemsData;
       if (electronicDocsData) this.data.electronicDocs = electronicDocsData;
-      if (internalDocsData) this.data.internalDocs = internalDocsData;
+      if (internalDocsData && internalDocsData.length > 0) {
+        this.data.internalDocs = internalDocsData;
+      } else if (salesData && salesData.length > 0) {
+        this.data.internalDocs = salesData.map((s) => ({
+          id: generateUUID(),
+          doc_number: s.internal_doc_number || s.sale_number,
+          doc_type: 'comprobante_venta_interno',
+          reference_id: s.id,
+          issued_by: s.seller_user_id || 'd0000000-0000-0000-0000-000000000001',
+          issuer_name: s.seller_name || 'Sistema',
+          recipient_name: s.customer_name || 'CONSUMIDOR FINAL',
+          total_amount: Number(s.total_amount || 0),
+          details: {
+            saleNumber: s.sale_number,
+            paymentMethod: s.payment_method,
+            subtotal0: s.subtotal_0,
+            subtotalIva: s.subtotal_iva,
+            ivaAmount: s.iva_amount,
+          },
+          created_at: s.created_at,
+        }));
+      }
       if (purchaseOrdersData) this.data.purchaseOrders = purchaseOrdersData;
       if (auditLogsData) this.data.auditLogs = auditLogsData;
       if (settingsData && settingsData.length > 0) {
-        this.data.settings = { ...this.data.settings, ...settingsData[0] };
+        const mergedSettings = { ...this.data.settings, ...settingsData[0] };
+        if (!mergedSettings.logo_url || mergedSettings.logo_url.includes('dtmqftcsr')) {
+          mergedSettings.logo_url = DEFAULT_LOGO_URL;
+        }
+        this.data.settings = mergedSettings;
       }
       if (profsData && profsData.length > 0) {
         this.data.profiles = profsData;
@@ -503,6 +572,7 @@ class DatabaseEngine {
       exchanges: [...this.data.exchanges],
       replacements: [...this.data.replacements],
       emailQueue: [...this.data.emailQueue],
+      automations: [...this.data.automations],
       notifications: [...this.data.notifications],
     };
   }
@@ -1425,7 +1495,7 @@ class DatabaseEngine {
       title: `Incidencia Registrada: ${incidentNumber}`,
       message: `Se reportaron ${params.affected_qty} unidades dañadas de "${product?.name}". Requiere seguimiento con proveedor.`,
       type: 'danger',
-      link_url: '/visitas-proveedores',
+      link_url: '/visitas',
       is_read: false,
       created_at: new Date().toISOString(),
     });
@@ -2005,7 +2075,7 @@ class DatabaseEngine {
     customer.total_spent += totalAmount;
 
 
-    this.data.internalDocs.unshift({
+    const internalDoc: InternalDocument = {
       id: generateUUID(),
       doc_number: internalDocNumber,
       doc_type: 'comprobante_venta_interno',
@@ -2023,7 +2093,24 @@ class DatabaseEngine {
         ivaAmount,
       },
       created_at: new Date().toISOString(),
-    });
+    };
+    this.data.internalDocs.unshift(internalDoc);
+
+    if (isSupabaseConfigured && supabase) {
+      supabase.from('internal_documents').insert({
+        id: internalDoc.id,
+        doc_number: internalDoc.doc_number,
+        doc_type: internalDoc.doc_type,
+        reference_id: internalDoc.reference_id,
+        issued_by: userId && userId.length > 20 ? userId : 'd0000000-0000-0000-0000-000000000001',
+        issuer_name: userName,
+        recipient_name: internalDoc.recipient_name,
+        total_amount: internalDoc.total_amount,
+        details: internalDoc.details,
+      }).then(({ error }) => {
+        if (error) console.warn('Supabase internal_documents insert error:', error);
+      });
+    }
 
     this.addAuditLog(userId, userName, 'VENTA_POS_CONFIRMADA', 'Punto de Venta', saleNumber, `Venta procesada por $${totalAmount}`, null, newSale);
     this.notify();
@@ -2616,12 +2703,59 @@ class DatabaseEngine {
     }
   }
 
+  // --- REGLAS DE AUTOMATIZACIÓN ---
+  public toggleAutomationRule(id: string, userId: string, userName: string): AutomationRule | undefined {
+    const rule = this.data.automations.find((a) => a.id === id);
+    if (!rule) return undefined;
+    rule.is_active = !rule.is_active;
+    this.data.automations = [...this.data.automations];
+    this.addAuditLog(
+      userId,
+      userName,
+      rule.is_active ? 'ACTIVACION_AUTOMATIZACION' : 'PAUSA_AUTOMATIZACION',
+      'Automatizaciones',
+      rule.id,
+      `Regla "${rule.name}" ${rule.is_active ? 'activada' : 'pausada'}`
+    );
+    this.notify();
+    return rule;
+  }
+
+  public createAutomationRule(
+    ruleData: { name: string; event_trigger: string; action_type: string; conditionDescription?: string },
+    userId: string,
+    userName: string
+  ): AutomationRule {
+    const newRule: AutomationRule = {
+      id: generateUUID(),
+      name: ruleData.name,
+      event_trigger: ruleData.event_trigger,
+      conditions: { description: ruleData.conditionDescription || 'Condición estándar del evento' },
+      action_type: ruleData.action_type,
+      action_payload: { channel: 'in_app' },
+      is_active: true,
+      created_at: new Date().toISOString(),
+    };
+    this.data.automations = [newRule, ...this.data.automations];
+    this.addAuditLog(
+      userId,
+      userName,
+      'CREACION_AUTOMATIZACION',
+      'Automatizaciones',
+      newRule.id,
+      `Nueva regla de automatización creada: ${newRule.name}`
+    );
+    this.notify();
+    return newRule;
+  }
+
   public updateSettings(newSettings: Partial<SystemSettings>, userId: string, userName: string) {
     const prev = { ...this.data.settings };
     this.data.settings = { ...this.data.settings, ...newSettings };
 
     if (isSupabaseConfigured && supabase) {
-      supabase.from('system_settings').update({
+      const settingsId = (this.data.settings as any).id;
+      const query = supabase.from('system_settings').update({
         store_name: this.data.settings.store_name,
         trade_name: this.data.settings.trade_name,
         ruc: this.data.settings.ruc,
@@ -2636,7 +2770,8 @@ class DatabaseEngine {
         max_cashier_discount: this.data.settings.max_cashier_discount,
         logo_url: this.data.settings.logo_url,
         updated_at: new Date().toISOString()
-      }).eq('ruc', this.data.settings.ruc).then(({ error }) => {
+      });
+      (settingsId ? query.eq('id', settingsId) : query.eq('ruc', prev.ruc)).then(({ error }) => {
         if (error) console.warn('Supabase settings update error:', error);
       });
     }

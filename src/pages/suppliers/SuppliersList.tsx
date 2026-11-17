@@ -437,13 +437,23 @@ export const SuppliersList: React.FC = () => {
                 />
               </div>
 
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
                 <Input
                   label="Dirección de Bodega / Matriz Fiscal *"
                   placeholder="Av. 10 de Agosto N34-12 y Mariana de Jesús, Edif. Central"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   required
+                />
+              </div>
+
+              <div>
+                <Input
+                  label="Plazo de Crédito (días)"
+                  type="number"
+                  min={0}
+                  value={paymentTerms}
+                  onChange={(e) => setPaymentTerms(parseInt(e.target.value) || 0)}
                 />
               </div>
             </div>

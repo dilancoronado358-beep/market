@@ -461,15 +461,32 @@ export const PointOfSale: React.FC = () => {
 
         {/* Lista de Items en Carrito */}
         <div className="flex-1 overflow-y-auto my-3 divide-y divide-slate-100 dark:divide-slate-800/80 pr-1 max-h-56">
-          {cart.map((item) => (
+          {cart.map((item) => {
+            const rawLine = item.product.sale_price * item.quantity;
+            const netLine = rawLine - Number((rawLine * (item.discountPercent / 100)).toFixed(2));
+            return (
             <div key={item.product.id} className="py-2.5 flex items-center justify-between gap-2 text-xs">
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">
                   {item.product.name}
                 </p>
                 <p className="text-[11px] text-slate-400 font-mono">
-                  ${item.product.sale_price.toFixed(2)} c/u • Total: ${(item.product.sale_price * item.quantity).toFixed(2)}
+                  ${item.product.sale_price.toFixed(2)} c/u • Total: ${netLine.toFixed(2)}
                 </p>
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-[10px] text-slate-400">Desc %:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={item.discountPercent || ''}
+                    placeholder="0"
+                    onChange={(e) => handleApplyDiscount(item.product.id, parseFloat(e.target.value) || 0)}
+                    className="w-12 px-1 py-0.5 text-[11px] font-mono text-center rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                    title="Descuento porcentual en esta línea"
+                  />
+                </div>
               </div>
 
               {/* Botones de Cantidad */}
@@ -497,7 +514,8 @@ export const PointOfSale: React.FC = () => {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {cart.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
@@ -523,6 +541,12 @@ export const PointOfSale: React.FC = () => {
               <span>IVA (15%):</span>
               <span className="font-mono text-slate-700 dark:text-slate-300">${ivaAmount.toFixed(2)}</span>
             </div>
+            {discountTotal > 0 && (
+              <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-semibold">
+                <span>Descuento Aplicado:</span>
+                <span className="font-mono">-${discountTotal.toFixed(2)}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between items-center text-base font-extrabold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-800">

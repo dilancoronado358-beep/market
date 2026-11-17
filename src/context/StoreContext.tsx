@@ -42,6 +42,8 @@ interface StoreContextType extends DatabaseSnapshot {
   deleteCustomer: (id: string) => Promise<boolean>;
   deletePurchaseOrder: (id: string) => Promise<boolean>;
   deleteProfile: (id: string) => Promise<boolean>;
+  toggleAutomationRule: (id: string) => any;
+  createAutomationRule: (data: { name: string; event_trigger: string; action_type: string; conditionDescription?: string }) => any;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -397,6 +399,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             toast.error(e.message || 'Error al eliminar usuario');
             throw e;
           }
+        },
+        toggleAutomationRule: (id: string) => {
+          const rule = db.toggleAutomationRule(id, currentUserId, currentUserName);
+          setSnapshot(db.getSnapshot());
+          if (rule) {
+            toast.success(`Regla "${rule.name}" ${rule.is_active ? 'activada' : 'pausada'}.`);
+          }
+          return rule;
+        },
+        createAutomationRule: (data) => {
+          const rule = db.createAutomationRule(data, currentUserId, currentUserName);
+          setSnapshot(db.getSnapshot());
+          toast.success(`Regla "${rule.name}" creada exitosamente.`);
+          return rule;
         },
       }}
     >

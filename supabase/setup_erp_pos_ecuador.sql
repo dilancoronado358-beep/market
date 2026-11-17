@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS stores (
     address TEXT NOT NULL DEFAULT 'Quito, Ecuador',
     phone VARCHAR(50) DEFAULT '+593 2 254-8900',
     email VARCHAR(255) DEFAULT 'administracion@erpposecuador.com',
-    logo_url TEXT DEFAULT 'https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png',
+    logo_url TEXT DEFAULT 'https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg',
     is_active BOOLEAN NOT NULL DEFAULT true,
     establishment_code VARCHAR(3) NOT NULL DEFAULT '001',
     emission_point_code VARCHAR(3) NOT NULL DEFAULT '001',
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
     allow_negative_stock BOOLEAN NOT NULL DEFAULT false,
     require_supervisor_for_discount BOOLEAN NOT NULL DEFAULT true,
     max_cashier_discount NUMERIC(5, 2) NOT NULL DEFAULT 5.00,
-    logo_url TEXT DEFAULT 'https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png',
+    logo_url TEXT DEFAULT 'https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -675,7 +675,7 @@ VALUES (
     'Av. Amazonas N24-196 y Luis Cordero, Quito, Ecuador',
     '+593 2 254-8900',
     'administracion@erpposecuador.com',
-    'https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png'
+    'https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg'
 ) ON CONFLICT (code) DO UPDATE SET 
     name = EXCLUDED.name,
     trade_name = EXCLUDED.trade_name,
@@ -691,7 +691,7 @@ VALUES (
     'Av. Amazonas N24-196 y Luis Cordero, Quito, Ecuador',
     '+593 2 254-8900',
     'administracion@erpposecuador.com',
-    'https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png'
+    'https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg'
 ) ON CONFLICT (id) DO UPDATE SET
     store_name = EXCLUDED.store_name,
     trade_name = EXCLUDED.trade_name,

@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { db } from '../../lib/databaseState';
 
 export const KardexView: React.FC = () => {
-  const { movements, products, refresh } = useStore();
+  const { movements, products } = useStore();
   const { user, hasPermission } = useAuth();
 
   const [typeFilter, setTypeFilter] = useState<string>('todos');
@@ -62,7 +62,7 @@ export const KardexView: React.FC = () => {
     toast.success('Kardex exportado exitosamente a Excel');
   };
 
-  const handleExecuteAdjustment = (e: React.FormEvent) => {
+  const handleExecuteAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustProductId) {
       toast.error('Seleccione el producto a ajustar');
@@ -78,8 +78,8 @@ export const KardexView: React.FC = () => {
 
     try {
       const isNegative = ['ajuste_negativo', 'perdida', 'consumo_interno', 'producto_dañado', 'producto_vencido'].includes(adjustType);
-      
-      db.executeKardexMovement({
+
+      await db.executeKardexMovement({
         productId: prod.id,
         movementType: adjustType,
         quantityIn: isNegative ? 0 : adjustQty,
@@ -91,7 +91,6 @@ export const KardexView: React.FC = () => {
         reason: adjustReason,
       });
 
-      refresh();
       toast.success(`Ajuste de inventario ejecutado e impactado en Kardex.`);
       setIsAdjustModalOpen(false);
       // Reset

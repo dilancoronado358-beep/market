@@ -2,6 +2,7 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { useStore } from '../../context/StoreContext';
 import { useAuth } from '../../context/AuthContext';
+import { DEFAULT_LOGO_URL } from '../../lib/databaseState';
 import { StatCard } from '../../components/common/StatCard';
 import {
   DollarSign,
@@ -37,6 +38,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const {
+    settings,
     sales,
     products,
     visits,
@@ -150,16 +152,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     <div className="space-y-6 animate-fade-in">
       {/* Banner de Bienvenida y Acciones Rápidas */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-xl bg-slate-900 text-white shadow-card relative overflow-hidden border border-slate-800">
-        <div className="space-y-1 z-10">
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
-            <span>Tienda Operativa Matriz • Quito, Ecuador</span>
+        <div className="flex items-start sm:items-center gap-4 z-10">
+          <img
+            src={settings.logo_url || DEFAULT_LOGO_URL}
+            alt="Logo Insignia"
+            className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-2xl ring-2 ring-white/20 bg-white/10 p-0.5 shadow-lg shrink-0"
+          />
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
+              <span>Tienda Operativa Matriz • Quito, Ecuador</span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Panel Ejecutivo: {user?.full_name}
+            </h1>
+            <p className="text-xs text-slate-400">
+              Consolidado general en tiempo real de operaciones comerciales, recepción de proveedores, Kardex y caja.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Panel Ejecutivo: {user?.full_name}
-          </h1>
-          <p className="text-xs text-slate-400">
-            Consolidado general en tiempo real de operaciones comerciales, recepción de proveedores, Kardex y caja.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 z-10">

@@ -29,6 +29,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+const getLocalDateStr = (d: Date = new Date()): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const CashRegister: React.FC = () => {
   const { cashSessions, cashMovements, sales, openCashSession, registerCashMovement, closeCashSession } = useStore();
   const { user, hasPermission } = useAuth();
@@ -40,7 +47,7 @@ export const CashRegister: React.FC = () => {
 
   // Pestaña activa: turnos o caja cuadrada del día
   const [activeTab, setActiveTab] = useState<'turnos' | 'cuadre_dia'>('turnos');
-  const [reconciliationDate, setReconciliationDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [reconciliationDate, setReconciliationDate] = useState<string>(() => getLocalDateStr());
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('todos');
   const [countedPhysicalInput, setCountedPhysicalInput] = useState<string>('');
 
@@ -71,7 +78,7 @@ export const CashRegister: React.FC = () => {
   // ============================================================================
   const daySales = sales.filter((s) => {
     if (s.status === 'anulada') return false;
-    const saleDateStr = new Date(s.created_at).toISOString().split('T')[0];
+    const saleDateStr = getLocalDateStr(new Date(s.created_at));
     return saleDateStr === reconciliationDate;
   });
 
@@ -90,7 +97,7 @@ export const CashRegister: React.FC = () => {
 
   // Movimientos de efectivo del día
   const dayMovements = cashMovements.filter((m) => {
-    const movDateStr = new Date(m.created_at).toISOString().split('T')[0];
+    const movDateStr = getLocalDateStr(new Date(m.created_at));
     return movDateStr === reconciliationDate;
   });
 
@@ -99,7 +106,7 @@ export const CashRegister: React.FC = () => {
 
   // Fondos iniciales de los turnos abiertos en la fecha
   const daySessions = cashSessions.filter((s) => {
-    const sessDateStr = new Date(s.opened_at).toISOString().split('T')[0];
+    const sessDateStr = getLocalDateStr(new Date(s.opened_at));
     return sessDateStr === reconciliationDate;
   });
   const dayOpeningFloat = daySessions.reduce((acc, s) => acc + s.opening_float, 0);
@@ -566,7 +573,7 @@ export const CashRegister: React.FC = () => {
               />
               <button
                 type="button"
-                onClick={() => setReconciliationDate(new Date().toISOString().split('T')[0])}
+                onClick={() => setReconciliationDate(getLocalDateStr())}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-300 transition-colors"
               >
                 Hoy

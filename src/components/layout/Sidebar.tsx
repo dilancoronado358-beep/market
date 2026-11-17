@@ -25,6 +25,8 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useStore } from '../../context/StoreContext';
+import { DEFAULT_LOGO_URL } from '../../lib/databaseState';
 import { ROLE_LABELS } from '../../types/auth';
 import { clsx } from 'clsx';
 
@@ -55,6 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const { user, hasPermission, logout } = useAuth();
+  const { settings } = useStore();
 
   const navGroups: { group: string; items: NavItem[] }[] = [
     {
@@ -118,10 +121,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="min-h-16 pt-[env(safe-area-inset-top,0px)] flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <img
-              src="https://res.cloudinary.com/dtmqftcsr/image/upload/v1786329945/ChatGPT_Image_9_ago_2026_08_48_30_p.m._1_slrt42.png"
+              src={settings?.logo_url || DEFAULT_LOGO_URL}
               alt="Logo"
               className={clsx(
-                'object-contain rounded-xl shadow-sm shrink-0 bg-slate-900 p-0.5',
+                'object-cover rounded-xl shadow-sm shrink-0 bg-slate-900 p-0.5',
                 collapsed ? 'mx-auto w-9 h-9' : 'w-9 h-9'
               )}
             />

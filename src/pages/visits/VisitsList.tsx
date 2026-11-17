@@ -26,8 +26,18 @@ export const VisitsList: React.FC = () => {
   const [isNewVisitOpen, setIsNewVisitOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('todos');
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayVisitsCount = visits.filter((v) => v.check_in_time.startsWith(todayStr)).length;
+  const isSameDay = (dateStr: string | null | undefined, targetDate: Date) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    return (
+      d.getFullYear() === targetDate.getFullYear() &&
+      d.getMonth() === targetDate.getMonth() &&
+      d.getDate() === targetDate.getDate()
+    );
+  };
+
+  const now = new Date();
+  const todayVisitsCount = visits.filter((v) => isSameDay(v.check_in_time, now)).length;
   const activeVisitsCount = visits.filter((v) => v.status === 'en_curso' || v.status === 'en_recepcion').length;
   const incidentVisitsCount = visits.filter((v) => v.has_incidents).length;
 
@@ -234,7 +244,7 @@ export const VisitsList: React.FC = () => {
             setIsDetailOpen(false);
             setSelectedVisit(null);
           }}
-          visit={selectedVisit}
+          visit={visits.find((v) => v.id === selectedVisit.id) || selectedVisit}
         />
       )}
 
