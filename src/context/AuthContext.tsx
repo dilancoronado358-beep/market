@@ -106,8 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           );
 
           if (profileRes && !profileRes.error && profileRes.data && profileRes.data.length > 0) {
-            profilesList = profileRes.data;
-            db.getSnapshot().profiles = profileRes.data;
+            profilesList = db.mergeRemoteProfiles(profileRes.data);
           }
         } catch (e) {
           console.warn('Error fetching profiles from Supabase:', e);
