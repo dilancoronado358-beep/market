@@ -68,6 +68,12 @@ const clearStoredSession = () => {
   }
 };
 
+const withTimeout = <T,>(promise: PromiseLike<T>, ms = 3500): Promise<T | null> =>
+  Promise.race([
+    Promise.resolve(promise),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+  ]);
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -87,18 +93,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setIsLoading(true);
 
-      // 1. Cargar perfiles directamente de Supabase
+      // 1. Cargar perfiles directamente de Supabase (con timeout de seguridad)
       let profilesList: UserProfile[] = db.getSnapshot().profiles;
       if (isSupabaseConfigured && supabase) {
         try {
-          const { data: dbProfiles, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: true });
+          const profileRes = await withTimeout(
+            supabase
+              .from('profiles')
+              .select('*')
+              .order('created_at', { ascending: true }),
+            3500
+          );
 
-          if (!error && dbProfiles && dbProfiles.length > 0) {
-            profilesList = dbProfiles;
-            db.getSnapshot().profiles = dbProfiles;
+          if (profileRes && !profileRes.error && profileRes.data && profileRes.data.length > 0) {
+            profilesList = profileRes.data;
+            db.getSnapshot().profiles = profileRes.data;
           }
         } catch (e) {
           console.warn('Error fetching profiles from Supabase:', e);
@@ -106,10 +115,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setAllUsers(profilesList);
 
-      // 2. Verificar sesión de Supabase Auth
+      // 2. Verificar sesión de Supabase Auth (con timeout de seguridad)
       if (isSupabaseConfigured && supabase) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+          const authRes = await withTimeout(supabase.auth.getSession(), 3500);
+          const session = authRes?.data?.session;
           if (session?.user?.email) {
             const userEmail = session.user.email.toLowerCase();
             const foundProfile = profilesList.find((p) => p.email.toLowerCase() === userEmail);
@@ -161,7 +171,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Inicio de sesión directo contra Supabase
   const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
-    setIsLoading(true);
     const cleanEmail = email.trim().toLowerCase();
 
     let targetProfile: UserProfile | null = null;
@@ -233,7 +242,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (!targetProfile) {
-      setIsLoading(false);
       return {
         success: false,
         error: 'El usuario no está registrado en la base de datos de Supabase. Verifique el correo o contacte al administrador.',
@@ -241,7 +249,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (!targetProfile.is_active) {
-      setIsLoading(false);
       return { success: false, error: 'Esta cuenta ha sido desactivada por el administrador general.' };
     }
 
@@ -259,7 +266,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       `Inicio de sesión exitoso en Supabase Cloud desde ${window.location.hostname}`
     );
 
-    setIsLoading(false);
     return { success: true };
   };
 

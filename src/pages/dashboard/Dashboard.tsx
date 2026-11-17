@@ -155,6 +155,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         <div className="flex items-start sm:items-center gap-4 z-10">
           <img
             src={settings.logo_url || DEFAULT_LOGO_URL}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/pwa-icon-512.png';
+            }}
             alt="Logo Insignia"
             className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-2xl ring-2 ring-white/20 bg-white/10 p-0.5 shadow-lg shrink-0"
           />

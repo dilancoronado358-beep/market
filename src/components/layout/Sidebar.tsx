@@ -122,6 +122,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center gap-2.5 overflow-hidden">
             <img
               src={settings?.logo_url || DEFAULT_LOGO_URL}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/pwa-icon-512.png';
+              }}
               alt="Logo"
               className={clsx(
                 'object-cover rounded-xl shadow-sm shrink-0 bg-slate-900 p-0.5',

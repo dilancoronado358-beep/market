@@ -90,6 +90,10 @@ export const PwaInstallPrompt: React.FC = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-emerald-500 p-0.5 shrink-0 shadow-md">
                 <img
                   src="https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/pwa-icon-512.png';
+                  }}
                   alt="App Icon"
                   className="w-full h-full object-cover rounded-[10px]"
                 />

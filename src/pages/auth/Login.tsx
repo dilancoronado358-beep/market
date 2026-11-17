@@ -108,6 +108,10 @@ export const Login: React.FC = () => {
           <div className="flex items-center gap-3.5">
             <img
               src="https://res.cloudinary.com/jellvthl/image/upload/v1794883973/ENSING_PNG_LOGO.jpg"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/pwa-icon-512.png';
+              }}
               alt="ERP / POS Ecuador"
               className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-2xl shadow-xl ring-2 ring-white/30 bg-white/10 backdrop-blur-md p-0.5 shrink-0"
             />

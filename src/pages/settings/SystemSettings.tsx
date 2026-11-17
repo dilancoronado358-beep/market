@@ -149,6 +149,10 @@ export const SystemSettings: React.FC = () => {
               <div className="w-16 h-16 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-900 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
                 <img
                   src={logoUrl || DEFAULT_LOGO_URL}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/pwa-icon-512.png';
+                  }}
                   alt="Vista previa Logo Insignia"
                   className="w-full h-full object-cover rounded-xl"
                 />

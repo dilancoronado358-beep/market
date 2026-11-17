@@ -23,9 +23,30 @@ import { AuditTrail } from './pages/audit/AuditTrail';
 import { UsersManagement } from './pages/users/UsersManagement';
 import { SystemSettings } from './pages/settings/SystemSettings';
 import { PermissionKey } from './types/auth';
+import { DEFAULT_LOGO_URL } from './lib/databaseState';
 import { PwaInstallPrompt } from './components/common/PwaInstallPrompt';
 import { Toaster } from 'sonner';
 import { ShieldAlert, Loader2 } from 'lucide-react';
+
+const LoadingScreen: React.FC<{ message?: string }> = ({
+  message = 'Cargando entorno seguro de ERP / POS Ecuador...',
+}) => (
+  <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4 px-4">
+    <img
+      src={DEFAULT_LOGO_URL}
+      onError={(e) => {
+        e.currentTarget.onerror = null;
+        e.currentTarget.src = '/pwa-icon-512.png';
+      }}
+      alt="Logo Insignia ERP / POS Ecuador"
+      className="w-24 h-24 object-contain rounded-2xl shadow-2xl ring-2 ring-white/20 bg-slate-800/80 p-2 mb-2 animate-pulse"
+    />
+    <Loader2 className="w-7 h-7 animate-spin text-brand-500" />
+    <p className="text-xs font-semibold tracking-wider uppercase text-slate-400 text-center">
+      {message}
+    </p>
+  </div>
+);
 
 interface ProtectedRouteProps {
   permission?: PermissionKey;
@@ -37,14 +58,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ permission, children })
   const navigate = useNavigate();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
-        <p className="text-xs font-semibold tracking-wider uppercase text-slate-400">
-          Cargando entorno seguro de ERP / POS Ecuador...
-        </p>
-      </div>
-    );
+    return <LoadingScreen message="Cargando entorno seguro de ERP / POS Ecuador..." />;
   }
 
   if (!isAuthenticated) {
@@ -94,14 +108,7 @@ const LoginRoute: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
-        <p className="text-xs font-semibold tracking-wider uppercase text-slate-400">
-          Cargando entorno seguro...
-        </p>
-      </div>
-    );
+    return <LoadingScreen message="Cargando entorno seguro..." />;
   }
 
   if (isAuthenticated) {

@@ -87,6 +87,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         <div className="flex lg:hidden items-center gap-1.5 shrink-0">
           <img
             src={settings.logo_url || DEFAULT_LOGO_URL}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/pwa-icon-512.png';
+            }}
             alt="Logo Insignia"
             className="w-6 h-6 object-cover rounded bg-slate-900 p-0.5"
           />
@@ -98,6 +102,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onNavigate, onTogg
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50/90 dark:bg-slate-850/70 border border-slate-200/80 dark:border-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300">
           <img
             src={settings.logo_url || DEFAULT_LOGO_URL}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/pwa-icon-512.png';
+            }}
             alt="Logo Insignia"
             className="w-5 h-5 object-cover rounded bg-slate-900 p-0.5 shrink-0"
           />
